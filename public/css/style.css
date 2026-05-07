@@ -230,6 +230,22 @@ body:has(.sidebar) { display: flex; align-items: stretch; min-height: 100vh; }
 .site-name { font-weight: 600; font-size: 1.05rem; }
 .site-num { font-size: 0.7rem; color: var(--border); font-weight: 500; margin-right: 4px; font-variant-numeric: tabular-nums; user-select: none; min-width: 20px; display: inline-block; text-align: right; }
 
+/* Domain variant pills (sibling TLDs grouped under one primary) */
+.site-variants {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 6px 20px 10px; background: var(--card);
+  border-top: 1px solid var(--bg);
+}
+.variants-label { font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
+.variant-pill {
+  display: inline-flex; align-items: center;
+  padding: 2px 9px 2px 6px; border-radius: 999px;
+  border: 1px solid var(--border); font-size: 0.78rem;
+  color: var(--muted); background: var(--bg); cursor: default;
+}
+.variant-ok   { border-color: #b3e5be; color: var(--ok); }
+.variant-down { border-color: #ffcecb; color: var(--down); background: var(--down-bg); }
+
 /* Response time tiers */
 .rt-good { color: var(--ok); font-weight: 600; }
 .rt-warn { color: var(--warn); font-weight: 600; }

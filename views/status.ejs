@@ -42,14 +42,19 @@
 
   <ul class="site-list">
     <% const uptimeLabel = { '24h': 'Uptime 24h', '30d': 'Uptime 30d', '1y': 'Uptime 1y' }[currentWindow] || 'Uptime';
-       const timelineTitle = { '24h': 'Last 24 hours (1 bar = 1 hour)', '30d': 'Last 30 days (1 bar = 1 day)', '1y': 'Last 52 weeks (1 bar = 1 week)' }[currentWindow]; %>
-    <% summaries.forEach(({ site, last, uptime24hPct, uptime30dPct, uptime1yPct, currentWindowPct, rtStats, rtTier, timeline, codes24h, errorCount24h, recentProblems, recentIncidents }, siteIdx) => { %>
+       const timelineTitle = { '24h': 'Last 24 hours (1 bar = 1 hour)', '30d': 'Last 30 days (1 bar = 1 day)', '1y': 'Last 52 weeks (1 bar = 1 week)' }[currentWindow];
+       const tldOf = (url) => { try { return '.' + new URL(url).hostname.replace(/^www\./,'').split('.').pop(); } catch(_){ return url; } };
+    %>
+    <% groups.forEach((group, groupIdx) => {
+       const { site, last, uptime24hPct, uptime30dPct, uptime1yPct, currentWindowPct, rtStats, rtTier, timeline, codes24h, errorCount24h, recentProblems, recentIncidents } = group[0];
+       const siblings = group.slice(1);
+    %>
       <li class="site-row" data-site-id="<%= site.id %>">
         <button type="button" class="site-toggle" aria-expanded="false" aria-controls="detail-<%= site.id %>">
           <div class="site-main">
             <span class="dot dot-<%= last ? (last.is_up ? 'ok' : 'down') : 'muted' %>"></span>
             <div class="site-text">
-              <span class="site-name"><span class="site-num"><%= String(siteIdx + 1).padStart(2, '0') %></span><%= site.name %></span>
+              <span class="site-name"><span class="site-num"><%= String(groupIdx + 1).padStart(2, '0') %></span><%= site.name %></span>
               <span class="site-url"><%= site.url %></span>
             </div>
           </div>
@@ -100,6 +105,18 @@
                   title="<%= t.label %>: <%= t.cls === 'none' ? 'no data' : t.pct.toFixed(1) + '% up (' + t.total + ' checks)' %>"></span>
           <% }) %>
         </div>
+
+        <% if (siblings.length > 0) { %>
+        <div class="site-variants">
+          <span class="variants-label">Also monitored:</span>
+          <% siblings.forEach(v => { %>
+            <span class="variant-pill variant-<%= v.last ? (v.last.is_up ? 'ok' : 'down') : 'none' %>"
+                  title="<%= v.site.url %> — <%= v.last ? (v.last.is_up ? 'Up · ' + v.last.response_time_ms + 'ms' : 'Down') : 'No data' %>">
+              <span class="dot dot-<%= v.last ? (v.last.is_up ? 'ok' : 'down') : 'muted' %>" style="width:8px;height:8px;margin-right:3px;"></span><%= new URL(v.site.url).hostname.replace(/^www\./, '') %>
+            </span>
+          <% }) %>
+        </div>
+        <% } %>
 
         <% if (last && last.error_message) { %>
           <div class="site-error"><%= last.error_message %></div>

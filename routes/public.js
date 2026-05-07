@@ -188,6 +188,40 @@ function getSiteSummaries(currentWindow = '24h') {
   });
 }
 
+/* ------------------ Domain grouping ------------------ */
+
+function domainStem(url) {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase().replace(/^www\./, '');
+    const parts = hostname.split('.');
+    return parts.length >= 2 ? parts[parts.length - 2] : hostname;
+  } catch (_) { return url; }
+}
+
+function groupSummaries(summaries) {
+  const groups = new Map();
+  for (const s of summaries) {
+    const stem = domainStem(s.site.url);
+    if (!groups.has(stem)) groups.set(stem, []);
+    groups.get(stem).push(s);
+  }
+  const tldPriority = (url) => {
+    try {
+      const h = new URL(url).hostname.toLowerCase();
+      if (h.endsWith('.com')) return 0;
+      if (h.endsWith('.de')) return 1;
+      if (h.endsWith('.org')) return 2;
+      if (h.endsWith('.net')) return 3;
+      return 4;
+    } catch (_) { return 9; }
+  };
+  return [...groups.values()].map((group) =>
+    group.length > 1
+      ? [...group].sort((a, b) => tldPriority(a.site.url) - tldPriority(b.site.url))
+      : group
+  );
+}
+
 /* ------------------ Public status page ------------------ */
 
 router.get('/', (req, res) => {
@@ -208,8 +242,9 @@ router.get('/', (req, res) => {
         : allUp && sslExpiringSoon
           ? { label: 'All systems operational — SSL renewal needed soon', cls: 'warn' }
           : { label: 'Status unknown — waiting for first checks', cls: 'muted' };
+  const groups = groupSummaries(summaries);
   res.render('status', {
-    summaries, overall,
+    summaries, groups, overall,
     currentWindow: win,
     measurementRegion: MEASUREMENT_REGION,
     measurementHost: MEASUREMENT_HOST,

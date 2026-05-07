@@ -299,6 +299,29 @@ router.post('/sites/:id/delete', (req, res) => {
   res.redirect('/admin/sites?flash=Site+removed');
 });
 
+// --- Check all sites ---
+router.post('/sites/check-all', async (req, res) => {
+  if (req.session.userRole === 'moderator') {
+    return queueAction(req, res, 'check_all', {}, 'Check all sites now', '/admin/sites');
+  }
+
+  const sites = db.prepare('SELECT * FROM sites WHERE enabled = 1').all();
+  let checked = 0;
+  let errors = 0;
+  for (const site of sites) {
+    try {
+      const result = await monitor.checkSite(site);
+      monitor.recordCheck(result);
+      await monitor.fetchAndUpdateTitle(site);
+      checked++;
+    } catch (_) {
+      errors++;
+    }
+  }
+  const msg = encodeURIComponent(`Checked ${checked} site(s)${errors ? `, ${errors} error(s)` : ''}`);
+  res.redirect('/admin/sites?flash=' + msg);
+});
+
 // --- Run a check on demand ---
 router.post('/sites/:id/check', async (req, res) => {
   const site = db.prepare('SELECT * FROM sites WHERE id = ?').get(req.params.id);
@@ -312,6 +335,7 @@ router.post('/sites/:id/check', async (req, res) => {
   try {
     const result = await monitor.checkSite(site);
     monitor.recordCheck(result);
+    await monitor.fetchAndUpdateTitle(site);
     res.redirect('/admin/sites?flash=Check+complete');
   } catch (err) {
     res.status(500).send('Check failed: ' + err.message);
@@ -526,6 +550,18 @@ router.post('/pending/:id/approve', requireAdmin, async (req, res) => {
   const data = JSON.parse(action.action_data);
   try {
     switch (action.action_type) {
+      case 'check_all': {
+        const allSites = db.prepare('SELECT * FROM sites WHERE enabled = 1').all();
+        for (const s of allSites) {
+          try {
+            const r = await monitor.checkSite(s);
+            monitor.recordCheck(r);
+            await monitor.fetchAndUpdateTitle(s);
+          } catch (_) {}
+        }
+        break;
+      }
+
       case 'site_bulk_add': {
         const bulkInsert = db.prepare(`
           INSERT INTO sites (name, url, enabled, expected_status, notify_on_down,
@@ -564,6 +600,7 @@ router.post('/pending/:id/approve', requireAdmin, async (req, res) => {
         if (site) {
           const result = await monitor.checkSite(site);
           monitor.recordCheck(result);
+          await monitor.fetchAndUpdateTitle(site);
         }
         break;
       }
