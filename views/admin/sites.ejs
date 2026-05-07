@@ -1,0 +1,47 @@
+<%- include('../partials/head', { title: 'Admin · Sites' }) %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <div class="page-header">
+    <h1>Sites</h1>
+    <a class="btn btn-primary" href="/admin/sites/new">+ Add site</a>
+  </div>
+  <% if (flash) { %><div class="alert alert-info"><%= flash %></div><% } %>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>URL</th>
+        <th>Enabled</th>
+        <th>Notify</th>
+        <th>Expected status</th>
+        <th>Keyword</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% sites.forEach(s => { %>
+        <tr>
+          <td><strong><%= s.name %></strong></td>
+          <td><a href="<%= s.url %>" target="_blank" rel="noopener"><%= s.url %></a></td>
+          <td><%= s.enabled ? 'Yes' : 'No' %></td>
+          <td><%= s.notify_on_down ? 'Yes' : 'No' %></td>
+          <td><%= s.expected_status %></td>
+          <td><%= s.expected_keyword || '—' %></td>
+          <td class="actions">
+            <form action="/admin/sites/<%= s.id %>/check" method="post" style="display:inline">
+              <button class="btn btn-ghost" type="submit">Check now</button>
+            </form>
+            <a class="btn btn-ghost" href="/admin/sites/<%= s.id %>/edit">Edit</a>
+            <form action="/admin/sites/<%= s.id %>/delete" method="post" style="display:inline"
+                  onsubmit="return confirm('Delete <%= s.name %>?')">
+              <button class="btn btn-danger" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</main>
+</body>
+</html>

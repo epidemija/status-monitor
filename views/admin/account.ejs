@@ -1,0 +1,18 @@
+<%- include('../partials/head', { title: 'Admin · Account' }) %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <h1>Account</h1>
+  <% if (flash) { %><div class="alert alert-info"><%= decodeURIComponent(flash) %></div><% } %>
+  <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+  <form class="card form" action="/admin/account/password" method="post">
+    <h2>Change password</h2>
+    <label>Current password<input type="password" name="current" required autocomplete="current-password" /></label>
+    <label>New password (min 8 chars)<input type="password" name="next" required minlength="8" autocomplete="new-password" /></label>
+    <label>Confirm new password<input type="password" name="confirm" required autocomplete="new-password" /></label>
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit">Update password</button>
+    </div>
+  </form>
+</main>
+</body>
+</html>

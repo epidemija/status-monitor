@@ -1,0 +1,53 @@
+<%- include('partials/head', { title: 'Report a problem' }) %>
+<header class="status-header status-muted">
+  <div class="container">
+    <h1>Report a problem</h1>
+    <p class="overall">Tell us what's broken — your report goes straight to the team.</p>
+  </div>
+</header>
+<main class="container narrow">
+  <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+  <form class="card form" method="post" action="/report">
+    <label>Which website?
+      <select name="site_id">
+        <option value="">— Not sure / general feedback —</option>
+        <% sites.forEach(s => { %>
+          <option value="<%= s.id %>" <%= preselectedSiteId === s.id ? 'selected' : '' %>><%= s.name %> (<%= s.url %>)</option>
+        <% }) %>
+      </select>
+    </label>
+
+    <label>Severity
+      <select name="severity">
+        <option value="low"    <%= (values.severity || 'medium') === 'low' ? 'selected' : '' %>>Low — minor cosmetic issue</option>
+        <option value="medium" <%= (values.severity || 'medium') === 'medium' ? 'selected' : '' %>>Medium — broken but workable</option>
+        <option value="high"   <%= values.severity === 'high' ? 'selected' : '' %>>High — site is down or unusable</option>
+      </select>
+    </label>
+
+    <label>Your name <span class="muted small">(optional)</span>
+      <input type="text" name="reporter_name" maxlength="120" value="<%= values.reporter_name || '' %>" />
+    </label>
+
+    <label>Your email <span class="muted small">(optional, so we can follow up)</span>
+      <input type="email" name="reporter_email" maxlength="240" value="<%= values.reporter_email || '' %>" />
+    </label>
+
+    <label>Page URL where the problem is <span class="muted small">(optional)</span>
+      <input type="url" name="page_url" placeholder="https://..." value="<%= values.page_url || '' %>" />
+    </label>
+
+    <label>What's the problem? <span class="muted small">(min 10, max 5000 characters)</span>
+      <textarea name="description" rows="6" required minlength="10" maxlength="5000"
+        placeholder="Describe what you saw, what you expected, and what steps to reproduce it..."><%= values.description || '' %></textarea>
+    </label>
+
+    <div class="form-actions">
+      <a class="btn btn-ghost" href="/">Cancel</a>
+      <button class="btn btn-primary" type="submit">Submit report</button>
+    </div>
+    <p class="muted small">No personal data is stored beyond what you enter and your browser's user-agent string (used for debugging).</p>
+  </form>
+</main>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<%- include('../partials/head', { title: 'Admin · Dashboard' }) %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <h1>Dashboard</h1>
+
+  <section class="stat-row">
+    <a class="stat-card" href="/admin/sites">
+      <span class="stat-label">Sites monitored</span>
+      <span class="stat-value"><%= summary.length %></span>
+    </a>
+    <a class="stat-card" href="/admin/incidents">
+      <span class="stat-label">Open incidents</span>
+      <span class="stat-value <%= openIncidents.length > 0 ? 'down' : 'ok' %>"><%= openIncidents.length %></span>
+    </a>
+    <a class="stat-card" href="/admin/reports">
+      <span class="stat-label">Open reports</span>
+      <span class="stat-value <%= openReports > 0 ? 'warn' : '' %>"><%= openReports %></span>
+    </a>
+    <a class="stat-card" href="/admin/sites">
+      <span class="stat-label">SSL renew &lt; 30d</span>
+      <span class="stat-value <%= sslSoon.length > 0 ? 'warn' : '' %>"><%= sslSoon.length %></span>
+    </a>
+    <a class="stat-card" href="/admin/status-codes">
+      <span class="stat-label">4xx/5xx in 24h</span>
+      <span class="stat-value <%= errorCodes24h > 0 ? 'down' : '' %>"><%= errorCodes24h %></span>
+    </a>
+  </section>
+
+  <section class="card">
+    <h2>Site overview</h2>
+    <table class="table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Site</th>
+          <th>Status</th>
+          <th>Response</th>
+          <th>Avg 24h</th>
+          <th>SSL</th>
+          <th>Last checked</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% summary.forEach(({ site, last, avgRt24h, rtTier }) => { %>
+          <tr>
+            <td><span class="dot dot-<%= last ? (last.is_up ? 'ok' : 'down') : 'muted' %>"></span></td>
+            <td><a href="<%= site.url %>" target="_blank" rel="noopener"><%= site.name %></a></td>
+            <td>
+              <% if (last) { %>
+                <span class="<%= last.is_up ? 'ok' : 'down' %>">
+                  <%= last.is_up ? 'Up' : 'Down' %><% if (last.status_code) { %> · <%= last.status_code %><% } %>
+                </span>
+              <% } else { %><span class="muted">—</span><% } %>
+            </td>
+            <td>
+              <% if (last && last.response_time_ms != null) { %>
+                <span class="rt-<%= rtTier %>"><%= last.response_time_ms %> ms</span>
+              <% } else { %>—<% } %>
+            </td>
+            <td><%= avgRt24h != null ? avgRt24h + ' ms' : '—' %></td>
+            <td>
+              <% if (last && last.ssl_valid === 1) { %>
+                <% const soon = last.ssl_days_remaining != null && last.ssl_days_remaining <= 30; %>
+                <span class="<%= soon ? 'warn' : '' %>">
+                  Valid<% if (last.ssl_days_remaining != null) { %> (<%= last.ssl_days_remaining %>d)<% } %>
+                </span>
+              <% } else if (last && last.ssl_valid === 0) { %>
+                <span class="down">Invalid</span>
+              <% } else { %>—<% } %>
+            </td>
+            <td><%= last ? new Date(last.checked_at + 'Z').toLocaleString() : '—' %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </section>
+
+  <% if (sslSoon.length > 0) { %>
+    <section class="card">
+      <h2>SSL certificates expiring soon</h2>
+      <ul class="incident-list">
+        <% sslSoon.forEach(s => { %>
+          <li>
+            <strong><%= s.name %></strong> — <span class="warn"><%= s.ssl_days_remaining %> days</span>
+            <span class="muted small"> · expires <%= new Date(s.ssl_expires_at).toLocaleDateString() %></span>
+          </li>
+        <% }) %>
+      </ul>
+    </section>
+  <% } %>
+
+  <section class="card">
+    <h2>Open incidents</h2>
+    <% if (openIncidents.length === 0) { %>
+      <p class="muted">No open incidents 🎉</p>
+    <% } else { %>
+      <ul class="incident-list">
+        <% openIncidents.forEach(i => { %>
+          <li>
+            <strong><%= i.site_name %></strong> — <%= i.reason || 'Down' %>
+            <span class="muted">since <%= new Date(i.started_at + 'Z').toLocaleString() %></span>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </section>
+</main>
+</body>
+</html>

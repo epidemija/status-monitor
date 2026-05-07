@@ -1,0 +1,19 @@
+<nav class="topnav">
+  <div class="container nav-row">
+    <a class="brand" href="/admin">Status Monitor</a>
+    <div class="nav-links">
+      <a href="/admin">Dashboard</a>
+      <a href="/admin/sites">Sites</a>
+      <a href="/admin/incidents">Incidents</a>
+      <a href="/admin/status-codes">Status codes</a>
+      <a href="/admin/reports">Reports</a>
+      <a href="/admin/settings">Settings</a>
+      <a href="/admin/account">Account</a>
+      <a href="/" target="_blank">Public page ↗</a>
+    </div>
+    <form action="/logout" method="post" class="logout-form">
+      <span class="user-email"><%= userEmail %></span>
+      <button type="submit" class="btn btn-ghost">Logout</button>
+    </form>
+  </div>
+</nav>

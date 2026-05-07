@@ -1,0 +1,18 @@
+<%- include('partials/head', { title: 'Sign in' }) %>
+<main class="auth-shell">
+  <form class="auth-card" action="/login" method="post">
+    <h1>Status Monitor</h1>
+    <p class="muted">Sign in to manage monitored sites.</p>
+    <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+    <label>Email
+      <input type="email" name="email" required autofocus autocomplete="username" />
+    </label>
+    <label>Password
+      <input type="password" name="password" required autocomplete="current-password" />
+    </label>
+    <button class="btn btn-primary" type="submit">Sign in</button>
+    <p class="muted small"><a href="/">← Back to public status</a></p>
+  </form>
+</main>
+</body>
+</html>

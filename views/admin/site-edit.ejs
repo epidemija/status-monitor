@@ -1,0 +1,60 @@
+<%- include('../partials/head', { title: site ? 'Edit site' : 'New site' }) %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <h1><%= site ? 'Edit site' : 'New site' %></h1>
+  <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+  <form class="card form" method="post" action="<%= site ? '/admin/sites/' + site.id + '/edit' : '/admin/sites/new' %>">
+    <label>Name
+      <input type="text" name="name" required value="<%= site ? site.name : '' %>" />
+    </label>
+    <label>URL (full, with https://)
+      <input type="url" name="url" required value="<%= site ? site.url : 'https://' %>" />
+    </label>
+    <label>Expected HTTP status code
+      <input type="number" name="expected_status" min="100" max="599"
+             value="<%= site ? site.expected_status : 200 %>" />
+      <small class="muted">Use 200 for normal sites. Anything else flips the site to "down".</small>
+    </label>
+    <label>Optional keyword to look for in response body
+      <input type="text" name="expected_keyword"
+             value="<%= site && site.expected_keyword ? site.expected_keyword : '' %>" />
+      <small class="muted">If set, the page must contain this text or it counts as down (catches white-page maintenance modes).</small>
+    </label>
+
+    <h3>Response time thresholds</h3>
+    <div class="form-row">
+      <label>Warn at (ms)
+        <input type="number" name="response_time_warn_ms" min="0"
+               value="<%= site ? site.response_time_warn_ms : 800 %>" />
+        <small class="muted">Above this is "slow" (yellow).</small>
+      </label>
+      <label>Critical at (ms)
+        <input type="number" name="response_time_crit_ms" min="0"
+               value="<%= site ? site.response_time_crit_ms : 2500 %>" />
+        <small class="muted">Above this is "very slow" (red).</small>
+      </label>
+    </div>
+
+    <h3>SSL warning</h3>
+    <label>Days before expiry to start warning
+      <input type="number" name="ssl_warn_days" min="1" max="365"
+             value="<%= site ? site.ssl_warn_days : 30 %>" />
+      <small class="muted">An alert fires once at the configured threshold and again at 14d, 7d, 1d.</small>
+    </label>
+
+    <label class="checkbox">
+      <input type="checkbox" name="enabled" <%= !site || site.enabled ? 'checked' : '' %> />
+      Enabled (run scheduled checks)
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="notify_on_down" <%= !site || site.notify_on_down ? 'checked' : '' %> />
+      Send notifications when down
+    </label>
+    <div class="form-actions">
+      <a class="btn btn-ghost" href="/admin/sites">Cancel</a>
+      <button class="btn btn-primary" type="submit">Save</button>
+    </div>
+  </form>
+</main>
+</body>
+</html>

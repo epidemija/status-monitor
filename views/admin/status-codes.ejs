@@ -1,0 +1,85 @@
+<%- include('../partials/head', { title: 'Admin · Status codes' }) %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <h1>HTTP error status codes</h1>
+  <p class="muted">Every check that returned a 4xx (client error) or 5xx (server error) status code.</p>
+
+  <form class="filter-bar" method="get" action="/admin/status-codes">
+    <label>Window
+      <select name="window" onchange="this.form.submit()">
+        <option value="24h" <%= currentWindow === '24h' ? 'selected' : '' %>>Last 24 hours</option>
+        <option value="7d"  <%= currentWindow === '7d'  ? 'selected' : '' %>>Last 7 days</option>
+        <option value="30d" <%= currentWindow === '30d' ? 'selected' : '' %>>Last 30 days</option>
+        <option value="1y"  <%= currentWindow === '1y'  ? 'selected' : '' %>>Last 1 year</option>
+      </select>
+    </label>
+    <label>Site
+      <select name="site" onchange="this.form.submit()">
+        <option value="">All sites</option>
+        <% sites.forEach(s => { %>
+          <option value="<%= s.id %>" <%= currentSite === s.id ? 'selected' : '' %>><%= s.name %></option>
+        <% }) %>
+      </select>
+    </label>
+    <% if (currentCode) { %>
+      <label>Code
+        <input type="number" name="code" value="<%= currentCode %>" />
+      </label>
+    <% } %>
+    <noscript><button class="btn btn-ghost" type="submit">Apply</button></noscript>
+    <% if (currentCode || currentSite) { %>
+      <a class="btn btn-ghost" href="/admin/status-codes?window=<%= currentWindow %>">Clear filters</a>
+    <% } %>
+  </form>
+
+  <section class="card">
+    <h2>Summary by code</h2>
+    <% if (summary.length === 0) { %>
+      <p class="muted">No 4xx/5xx responses in this window 🎉</p>
+    <% } else { %>
+      <table class="table">
+        <thead><tr><th>Code</th><th>What it means</th><th>Tier</th><th>Hits</th><th>Sites affected</th><th></th></tr></thead>
+        <tbody>
+          <% summary.forEach(r => { %>
+            <tr>
+              <td><strong><%= r.status_code %></strong></td>
+              <td><%= r.label || '—' %></td>
+              <td><span class="status-pill code-<%= r.tier %>"><%= r.tier %></span></td>
+              <td><%= r.count %></td>
+              <td><%= r.sites %></td>
+              <td><a class="btn btn-ghost" href="/admin/status-codes?window=<%= currentWindow %>&code=<%= r.status_code %>">View events</a></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+
+  <section class="card">
+    <h2>Recent events <span class="muted small">(latest 200)</span></h2>
+    <% if (events.length === 0) { %>
+      <p class="muted">No matching events.</p>
+    <% } else { %>
+      <table class="table">
+        <thead><tr><th>When</th><th>Site</th><th>Code</th><th>Response</th><th>Final URL</th><th>Note</th></tr></thead>
+        <tbody>
+          <% events.forEach(e => { %>
+            <tr>
+              <td class="small"><%= new Date(e.checked_at + 'Z').toLocaleString() %></td>
+              <td><strong><%= e.site_name %></strong></td>
+              <td>
+                <span class="status-pill code-<%= e.tier %>"><%= e.status_code %></span>
+                <% if (e.label) { %><span class="muted small"><%= e.label %></span><% } %>
+              </td>
+              <td><%= e.response_time_ms != null ? e.response_time_ms + ' ms' : '—' %></td>
+              <td class="small"><code><%= e.final_url || e.site_url %></code></td>
+              <td class="small muted"><%= e.error_message || '' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+</main>
+</body>
+</html>

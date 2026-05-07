@@ -1,0 +1,56 @@
+<%- include('../partials/head', { title: 'Admin · Reports' }) %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <h1>Bug reports</h1>
+  <% if (flash) { %><div class="alert alert-info"><%= flash %></div><% } %>
+
+  <nav class="filter-tabs">
+    <a class="<%= currentStatus === 'open' ? 'active' : '' %>" href="?status=open">Open <span class="badge"><%= counts.open || 0 %></span></a>
+    <a class="<%= currentStatus === 'in_progress' ? 'active' : '' %>" href="?status=in_progress">In progress <span class="badge"><%= counts.in_progress || 0 %></span></a>
+    <a class="<%= currentStatus === 'resolved' ? 'active' : '' %>" href="?status=resolved">Resolved <span class="badge"><%= counts.resolved || 0 %></span></a>
+    <a class="<%= currentStatus === 'all' ? 'active' : '' %>" href="?status=all">All</a>
+  </nav>
+
+  <% if (reports.length === 0) { %>
+    <p class="muted">No reports here.</p>
+  <% } %>
+
+  <% reports.forEach(r => { %>
+    <article class="card report-card">
+      <header class="report-head">
+        <span class="severity sev-<%= r.severity %>"><%= r.severity.toUpperCase() %></span>
+        <span class="report-title">
+          <% if (r.site_name) { %>
+            <strong><%= r.site_name %></strong> <span class="muted small">(<%= r.site_url %>)</span>
+          <% } else { %><strong>(no site)</strong><% } %>
+        </span>
+        <span class="muted small"><%= new Date(r.created_at + 'Z').toLocaleString() %></span>
+        <span class="status-badge status-<%= r.status %>"><%= r.status.replace('_', ' ') %></span>
+      </header>
+      <p class="report-desc"><%= r.description %></p>
+      <p class="muted small">
+        <% if (r.reporter_name || r.reporter_email) { %>
+          From <strong><%= r.reporter_name || 'anonymous' %></strong>
+          <% if (r.reporter_email) { %>&lt;<%= r.reporter_email %>&gt;<% } %>
+        <% } else { %>From: anonymous<% } %>
+        <% if (r.page_url) { %> · Page: <a href="<%= r.page_url %>" target="_blank" rel="noopener"><%= r.page_url %></a><% } %>
+      </p>
+      <% if (r.user_agent) { %>
+        <details class="report-ua"><summary class="muted small">Browser info</summary><code><%= r.user_agent %></code></details>
+      <% } %>
+      <div class="report-actions">
+        <% ['open','in_progress','resolved'].filter(s => s !== r.status).forEach(s => { %>
+          <form action="/admin/reports/<%= r.id %>/status?return=<%= currentStatus %>" method="post" style="display:inline">
+            <input type="hidden" name="status" value="<%= s %>" />
+            <button class="btn btn-ghost" type="submit">Mark <%= s.replace('_', ' ') %></button>
+          </form>
+        <% }) %>
+        <form action="/admin/reports/<%= r.id %>/delete" method="post" style="display:inline" onsubmit="return confirm('Delete this report?')">
+          <button class="btn btn-danger" type="submit">Delete</button>
+        </form>
+      </div>
+    </article>
+  <% }) %>
+</main>
+</body>
+</html>

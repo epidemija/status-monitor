@@ -1,0 +1,32 @@
+<%- include('../partials/head', { title: 'Admin · Incidents' }) %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <h1>Incidents (most recent 200)</h1>
+  <% if (incidents.length === 0) { %>
+    <p class="muted">No incidents recorded.</p>
+  <% } else { %>
+    <table class="table">
+      <thead>
+        <tr><th>Site</th><th>Started</th><th>Resolved</th><th>Duration</th><th>Reason</th><th>Notified</th></tr>
+      </thead>
+      <tbody>
+        <% incidents.forEach(i => {
+          const start = new Date(i.started_at + 'Z');
+          const end = i.resolved_at ? new Date(i.resolved_at + 'Z') : null;
+          const durMin = end ? Math.round((end - start) / 60000) : Math.round((Date.now() - start) / 60000);
+        %>
+          <tr class="<%= i.resolved_at ? '' : 'row-active' %>">
+            <td><strong><%= i.site_name %></strong><br><span class="muted small"><%= i.site_url %></span></td>
+            <td><%= start.toLocaleString() %></td>
+            <td><%= end ? end.toLocaleString() : '— still open —' %></td>
+            <td><%= durMin %> min</td>
+            <td><%= i.reason || '—' %></td>
+            <td><%= i.notified ? '✓' : '—' %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</main>
+</body>
+</html>

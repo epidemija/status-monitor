@@ -1,0 +1,64 @@
+<%- include('../partials/head', { title: 'Admin · Settings' }) %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <h1>Notification settings</h1>
+  <% if (flash) { %><div class="alert alert-info"><%= decodeURIComponent(flash) %></div><% } %>
+  <p class="muted">
+    Credentials (SMTP host, Twilio API keys) are stored in <code>.env</code> on the server, not in the database.
+    The values below control whether notifications are sent and to whom.
+  </p>
+
+  <form class="card form" method="post" action="/admin/settings">
+    <h2>Email</h2>
+    <p class="muted small">
+      <% if (smtpConfigured) { %><span class="ok">SMTP credentials are configured ✓</span>
+      <% } else { %><span class="down">SMTP not configured in .env (SMTP_HOST / SMTP_USER / SMTP_PASS)</span><% } %>
+    </p>
+    <label class="checkbox">
+      <input type="checkbox" name="email_enabled" <%= settings.email_enabled === '1' ? 'checked' : '' %> />
+      Send email alerts
+    </label>
+    <label>Recipients (comma-separated)
+      <input type="text" name="email_recipients" placeholder="ops@example.com, alerts@example.com"
+             value="<%= settings.email_recipients || '' %>" />
+    </label>
+
+    <h2>WhatsApp (Twilio)</h2>
+    <p class="muted small">
+      <% if (twilioConfigured) { %><span class="ok">Twilio credentials are configured ✓</span>
+      <% } else { %><span class="down">Twilio not configured in .env (TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_WHATSAPP_FROM)</span><% } %>
+    </p>
+    <label class="checkbox">
+      <input type="checkbox" name="whatsapp_enabled" <%= settings.whatsapp_enabled === '1' ? 'checked' : '' %> />
+      Send WhatsApp alerts
+    </label>
+    <label>Recipients (comma-separated, international format e.g. <code>+491701234567</code>)
+      <input type="text" name="whatsapp_recipients" placeholder="+491701234567, +14155551234"
+             value="<%= settings.whatsapp_recipients || '' %>" />
+    </label>
+
+    <h2>Bug reports</h2>
+    <label class="checkbox">
+      <input type="checkbox" name="notify_on_report" <%= (settings.notify_on_report === '1' || settings.notify_on_report === undefined) ? 'checked' : '' %> />
+      Email me whenever a user submits a bug report
+    </label>
+    <small class="muted">Uses the same email recipients as outage alerts.</small>
+
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit">Save settings</button>
+    </div>
+  </form>
+
+  <div class="card">
+    <h2>Send a test message</h2>
+    <p class="muted small">Tests use your saved recipient list and credentials from <code>.env</code>.</p>
+    <form action="/admin/settings/test-email" method="post" style="display:inline">
+      <button class="btn btn-ghost" type="submit">Send test email</button>
+    </form>
+    <form action="/admin/settings/test-whatsapp" method="post" style="display:inline">
+      <button class="btn btn-ghost" type="submit">Send test WhatsApp</button>
+    </form>
+  </div>
+</main>
+</body>
+</html>

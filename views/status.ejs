@@ -1,0 +1,219 @@
+<%- include('partials/head', { title: 'System Status' }) %>
+<header class="status-header status-<%= overall.cls %>">
+  <div class="container">
+    <h1>System Status</h1>
+    <p class="overall">
+      <span class="dot dot-<%= overall.cls %>"></span>
+      <%= overall.label %>
+    </p>
+    <p class="updated">
+      Last updated <%= new Date().toLocaleString() %>
+      <% if (typeof measurementRegion !== 'undefined' && measurementRegion) { %>
+        · Measured from <strong><%= measurementRegion %></strong>
+      <% } %>
+      · <a class="report-link" href="/report">Report a problem ↗</a>
+    </p>
+  </div>
+</header>
+<main class="container">
+  <% if (summaries.length === 0) { %>
+    <p class="empty">No sites are configured yet. <a href="/admin">Sign in to add some.</a></p>
+  <% } %>
+
+  <% if (summaries.length > 0) {
+    const winLabels = { '24h': 'Last 24 hours', '30d': 'Last 30 days', '1y': 'Last 1 year' };
+    const winFineLabel = { '24h': 'hourly', '30d': 'daily', '1y': 'weekly' };
+  %>
+    <nav class="window-tabs" aria-label="Time window">
+      <% ['24h','30d','1y'].forEach(w => { %>
+        <a href="?window=<%= w %>" class="<%= currentWindow === w ? 'active' : '' %>"><%= winLabels[w] %></a>
+      <% }) %>
+      <span class="muted small window-hint">Timeline shows <%= winFineLabel[currentWindow] %> bars · uptime is for the same window</span>
+    </nav>
+  <% } %>
+
+  <ul class="site-list">
+    <% const uptimeLabel = { '24h': 'Uptime 24h', '30d': 'Uptime 30d', '1y': 'Uptime 1y' }[currentWindow] || 'Uptime';
+       const timelineTitle = { '24h': 'Last 24 hours (1 bar = 1 hour)', '30d': 'Last 30 days (1 bar = 1 day)', '1y': 'Last 52 weeks (1 bar = 1 week)' }[currentWindow]; %>
+    <% summaries.forEach(({ site, last, uptime24hPct, uptime30dPct, uptime1yPct, currentWindowPct, rtStats, rtTier, timeline, codes24h, errorCount24h, recentProblems, recentIncidents }) => { %>
+      <li class="site-row" data-site-id="<%= site.id %>">
+        <button type="button" class="site-toggle" aria-expanded="false" aria-controls="detail-<%= site.id %>">
+          <div class="site-main">
+            <span class="dot dot-<%= last ? (last.is_up ? 'ok' : 'down') : 'muted' %>"></span>
+            <div class="site-text">
+              <span class="site-name"><%= site.name %></span>
+              <span class="site-url"><%= site.url %></span>
+            </div>
+          </div>
+          <div class="site-meta">
+            <% if (last) { %>
+              <span class="meta">
+                <span class="meta-label">Status</span>
+                <span class="meta-value <%= last.is_up ? 'ok' : 'down' %>">
+                  <%= last.is_up ? 'Up' : 'Down' %><% if (last.status_code) { %> · <%= last.status_code %><% } %>
+                  <% if (last.redirect_count && last.redirect_count > 0 && last.initial_status_code && last.initial_status_code !== last.status_code) { %>
+                    <span class="redirect-tag" title="<%= last.redirect_count %> redirect(s) followed">
+                      ← <%= last.initial_status_code %>
+                    </span>
+                  <% } %>
+                </span>
+              </span>
+              <span class="meta">
+                <span class="meta-label">Response</span>
+                <% if (last.response_time_ms != null) { %>
+                  <span class="meta-value rt-<%= rtTier %>"><%= last.response_time_ms %> ms</span>
+                <% } else { %><span class="meta-value muted">—</span><% } %>
+              </span>
+              <span class="meta">
+                <span class="meta-label">SSL</span>
+                <% if (last.ssl_valid === 1) { %>
+                  <% const ssloon = last.ssl_days_remaining != null && last.ssl_days_remaining <= 30; %>
+                  <span class="meta-value <%= ssloon ? 'warn' : 'ok' %>">
+                    <%= ssloon ? 'Renew soon' : 'Valid' %><% if (last.ssl_days_remaining != null) { %> · <%= last.ssl_days_remaining %>d<% } %>
+                  </span>
+                <% } else if (last.ssl_valid === 0) { %>
+                  <span class="meta-value down">Invalid</span>
+                <% } else { %><span class="meta-value muted">n/a</span><% } %>
+              </span>
+              <span class="meta">
+                <span class="meta-label"><%= uptimeLabel %></span>
+                <span class="meta-value"><%= currentWindowPct == null ? '—' : currentWindowPct.toFixed(2) + '%' %></span>
+              </span>
+            <% } else { %>
+              <span class="meta-value muted">No checks yet</span>
+            <% } %>
+          </div>
+          <span class="chevron" aria-hidden="true">▾</span>
+        </button>
+
+        <div class="timeline" title="<%= timelineTitle %>">
+          <% timeline.forEach(t => { %>
+            <span class="bar bar-<%= t.cls %>"
+                  title="<%= t.label %>: <%= t.cls === 'none' ? 'no data' : t.pct.toFixed(1) + '% up (' + t.total + ' checks)' %>"></span>
+          <% }) %>
+        </div>
+
+        <% if (last && last.error_message) { %>
+          <div class="site-error"><%= last.error_message %></div>
+        <% } %>
+
+        <div id="detail-<%= site.id %>" class="site-detail" hidden>
+          <div class="detail-grid">
+            <div class="detail-block">
+              <h4>Response time (24h)</h4>
+              <% if (rtStats && rtStats.samples > 0) { %>
+                <p>
+                  Avg <strong><%= Math.round(rtStats.avg_ms) %> ms</strong>,
+                  min <%= rtStats.min_ms %> ms,
+                  max <%= rtStats.max_ms %> ms,
+                  over <%= rtStats.samples %> checks.
+                </p>
+                <p class="muted small">Thresholds: good &lt; <%= site.response_time_warn_ms %>ms · slow ≥ <%= site.response_time_warn_ms %>ms · very slow ≥ <%= site.response_time_crit_ms %>ms</p>
+              <% } else { %>
+                <p class="muted">No data yet.</p>
+              <% } %>
+            </div>
+            <div class="detail-block">
+              <h4>HTTP responses (24h)</h4>
+              <% if (codes24h && codes24h.length) { %>
+                <ul class="code-pills">
+                  <% codes24h.forEach(c => { %>
+                    <li class="status-pill code-<%= c.tier %>" title="<%= c.label || '' %>">
+                      <%= c.status_code %><span class="muted small"> · <%= c.count %></span>
+                    </li>
+                  <% }) %>
+                </ul>
+                <% if (errorCount24h > 0) { %>
+                  <p class="small down"><%= errorCount24h %> error response(s) in the last 24 hours.</p>
+                <% } %>
+              <% } else { %>
+                <p class="muted small">No data yet.</p>
+              <% } %>
+
+              <% if (recentProblems && recentProblems.length) { %>
+                <p class="small muted" style="margin-top:8px">Recent problem codes (last 30 days):</p>
+                <ul class="code-pills">
+                  <% recentProblems.forEach(p => { %>
+                    <li class="status-pill code-<%= p.tier %>"
+                        title="<%= p.label %> · last seen <%= new Date(p.last_seen + 'Z').toLocaleString() %>">
+                      <%= p.status_code %><span class="muted small"> · <%= p.count %>×</span>
+                    </li>
+                  <% }) %>
+                </ul>
+              <% } %>
+            </div>
+
+            <div class="detail-block">
+              <h4>Latest check</h4>
+              <% if (last) { %>
+                <p>
+                  <%= new Date(last.checked_at + 'Z').toLocaleString() %><br>
+                  <% if (last.redirect_count && last.redirect_count > 0) { %>
+                    Final response <strong><%= last.status_code %></strong>
+                    after <strong><%= last.redirect_count %></strong> redirect<%= last.redirect_count === 1 ? '' : 's' %>
+                    (first response was <strong><%= last.initial_status_code %></strong>)
+                  <% } else { %>
+                    Status code <strong><%= last.status_code ?? '—' %></strong>, no redirects
+                  <% } %><br>
+                  Final URL <code><%= last.final_url || site.url %></code>
+                </p>
+                <% if (last.ssl_valid === 1) { %>
+                  <p class="muted small">SSL: <%= last.ssl_issuer || 'unknown issuer' %> · expires <%= last.ssl_expires_at ? new Date(last.ssl_expires_at).toLocaleDateString() : '—' %></p>
+                <% } %>
+              <% } else { %><p class="muted">No checks yet.</p><% } %>
+            </div>
+
+            <% if (recentIncidents && recentIncidents.length > 0) { %>
+            <div class="detail-block">
+              <h4>Recent incidents (last 5)</h4>
+              <ul class="mini-incidents">
+                <% recentIncidents.forEach(i => {
+                  const start = new Date(i.started_at + 'Z');
+                  const end = i.resolved_at ? new Date(i.resolved_at + 'Z') : null;
+                  const durMin = end ? Math.round((end - start) / 60000) : null;
+                %>
+                  <li>
+                    <span class="dot dot-<%= end ? 'ok' : 'down' %>"></span>
+                    <strong><%= start.toLocaleString() %></strong>
+                    <%= end ? '· resolved (' + durMin + ' min)' : '· still open' %>
+                    <% if (i.reason) { %><span class="muted small"> — <%= i.reason %></span><% } %>
+                  </li>
+                <% }) %>
+              </ul>
+            </div>
+            <% } %>
+
+            <div class="detail-block detail-actions">
+              <a class="btn btn-primary" href="/report?site=<%= site.id %>">Report a problem</a>
+              <a class="btn btn-ghost" href="<%= site.url %>" target="_blank" rel="noopener">Visit website ↗</a>
+              <a class="btn btn-ghost" href="/api/sites/<%= site.id %>/detail" target="_blank">View history (JSON)</a>
+            </div>
+          </div>
+        </div>
+      </li>
+    <% }) %>
+  </ul>
+
+  <footer class="footer">
+    <p>
+      <a href="/api/status">JSON API</a> ·
+      <a href="/report">Report a problem</a> ·
+      <a href="/admin">Admin</a>
+    </p>
+  </footer>
+</main>
+<script>
+  // Expandable rows
+  document.querySelectorAll('.site-toggle').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const expanded = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!expanded));
+      const target = document.getElementById(btn.getAttribute('aria-controls'));
+      if (target) target.hidden = expanded;
+    });
+  });
+  // Auto-refresh every 60 seconds.
+  setTimeout(() => location.reload(), 60000);
+</script>
+</body>
+</html>
