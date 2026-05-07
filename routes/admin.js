@@ -448,6 +448,34 @@ router.post('/settings', (req, res) => {
   res.redirect('/admin/settings?flash=Settings+saved');
 });
 
+// --- SMTP Check ---
+function smtpConfig() {
+  return {
+    host: process.env.SMTP_HOST || null,
+    port: process.env.SMTP_PORT || '587',
+    user: process.env.SMTP_USER || null,
+    from: process.env.SMTP_FROM || process.env.SMTP_USER || null,
+    secure: process.env.SMTP_SECURE === 'true',
+    configured: !!process.env.SMTP_HOST && !!process.env.SMTP_USER,
+  };
+}
+
+router.get('/smtp-check', (req, res) => {
+  res.render('admin/smtp-check', { config: smtpConfig(), result: null, lastTo: '' });
+});
+
+router.post('/smtp-check', async (req, res) => {
+  const to = (req.body.to || '').trim();
+  if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+    return res.render('admin/smtp-check', {
+      config: smtpConfig(), lastTo: to,
+      result: { ok: false, error: 'Enter a valid email address.' },
+    });
+  }
+  const result = await notifier.sendTestEmail(to);
+  res.render('admin/smtp-check', { config: smtpConfig(), result, lastTo: to });
+});
+
 router.post('/settings/test-email', async (req, res) => {
   const r = await notifier.sendTestEmail();
   const flash = r.ok ? 'Test+email+sent' : ('Email+failed:+' + encodeURIComponent(r.error));

@@ -7,6 +7,7 @@
     <a href="/admin/status-codes" class="<%= currentPath.startsWith('/status-codes') ? 'nav-active' : '' %>">Status codes</a>
     <a href="/admin/reports" class="<%= currentPath.startsWith('/reports') ? 'nav-active' : '' %>">Reports</a>
     <a href="/admin/settings" class="<%= currentPath.startsWith('/settings') ? 'nav-active' : '' %>">Settings</a>
+    <a href="/admin/smtp-check" class="<%= currentPath.startsWith('/smtp-check') ? 'nav-active' : '' %>">SMTP Check</a>
     <% if (userRole === 'admin') { %>
       <div class="sidebar-divider"></div>
       <a href="/admin/users" class="<%= currentPath.startsWith('/users') ? 'nav-active' : '' %>">Users</a>

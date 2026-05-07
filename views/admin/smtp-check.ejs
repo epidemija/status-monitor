@@ -1,0 +1,92 @@
+<%- include('../partials/head', { title: 'Admin · SMTP Check' }) %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <div class="page-header">
+    <h1>SMTP Check</h1>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">Configuration</h2>
+    <table class="table" style="max-width:520px;margin-top:0">
+      <tbody>
+        <tr>
+          <td class="muted small" style="width:130px;white-space:nowrap">Host / Port</td>
+          <td>
+            <% if (config.host) { %>
+              <code><%= config.host %>:<%= config.port %></code>
+            <% } else { %>
+              <span class="down">Not set — add SMTP_HOST to .env</span>
+            <% } %>
+          </td>
+        </tr>
+        <tr>
+          <td class="muted small">User</td>
+          <td>
+            <% if (config.user) { %>
+              <code><%= config.user %></code>
+            <% } else { %>
+              <span class="down">Not set — add SMTP_USER to .env</span>
+            <% } %>
+          </td>
+        </tr>
+        <tr>
+          <td class="muted small">From address</td>
+          <td><code><%= config.from || '—' %></code></td>
+        </tr>
+        <tr>
+          <td class="muted small">Encryption</td>
+          <td><%= config.secure ? 'SSL/TLS (port 465)' : 'STARTTLS (port 587)' %></td>
+        </tr>
+        <tr>
+          <td class="muted small">Status</td>
+          <td>
+            <% if (config.configured) { %>
+              <span class="ok" style="font-weight:600">✓ Configured</span>
+            <% } else { %>
+              <span class="down" style="font-weight:600">✗ Not configured</span>
+            <% } %>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="muted small" style="margin:12px 0 0">
+      SMTP credentials are read from the <code>.env</code> file:
+      <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>,
+      <code>SMTP_PASS</code>, <code>SMTP_FROM</code>, <code>SMTP_SECURE</code>.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">Send test email</h2>
+
+    <% if (result) { %>
+      <% if (result.ok) { %>
+        <div class="alert alert-info" style="margin-bottom:16px">
+          ✓ Test email sent successfully to <strong><%= lastTo %></strong>. Check your inbox (and spam folder).
+        </div>
+      <% } else if (result.skipped) { %>
+        <div class="alert alert-error" style="margin-bottom:16px">
+          Skipped: <%= result.reason %>. Make sure SMTP_HOST and SMTP_USER are set in .env.
+        </div>
+      <% } else { %>
+        <div class="alert alert-error" style="margin-bottom:16px">
+          ✗ Failed: <%= result.error %>
+        </div>
+      <% } %>
+    <% } %>
+
+    <form class="form" method="post" action="/admin/smtp-check" style="max-width:420px">
+      <label>Recipient address
+        <input type="email" name="to" required value="<%= lastTo %>" placeholder="you@example.com" />
+        <small class="muted">A real email address — this will send an actual message.</small>
+      </label>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit" <%= !config.configured ? 'disabled title="Configure SMTP first"' : '' %>>
+          Send test email
+        </button>
+      </div>
+    </form>
+  </div>
+</main>
+</body>
+</html>
