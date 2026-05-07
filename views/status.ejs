@@ -53,7 +53,7 @@
       <li class="site-row" data-site-id="<%= site.id %>">
         <button type="button" class="site-toggle" aria-expanded="false" aria-controls="detail-<%= site.id %>">
           <div class="site-main">
-            <span class="dot dot-<%= last ? (last.is_up ? (childrenDown ? 'warn' : 'ok') : 'down') : 'muted' %>"></span>
+            <span class="dot dot-<%= last ? (last.is_up ? 'ok' : 'down') : 'muted' %>"></span>
             <div class="site-text">
               <span class="site-name"><span class="site-num"><%= String(groupIdx + 1).padStart(2, '0') %></span><%= site.name %></span>
               <span class="site-url"><%= site.url %></span>
