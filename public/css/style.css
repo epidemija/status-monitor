@@ -88,8 +88,11 @@ h2 { font-size: 1.15rem; margin: 1.4rem 0 0.6rem; }
 }
 .footer-nav a {
   color: var(--accent);
-  font-size: 0.875rem;
+  font-size: 0.78rem;
   text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
 }
 .footer-nav a:hover {
   text-decoration: underline;
@@ -107,15 +110,52 @@ h2 { font-size: 1.15rem; margin: 1.4rem 0 0.6rem; }
 }
 .auth-card .btn { width: 100%; }
 
-/* ---- Admin ---- */
-.topnav { background: #1f2328; color: #fff; }
-.topnav a { color: #d0d7de; }
-.topnav a:hover { color: #fff; text-decoration: none; }
-.nav-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; }
-.brand { font-weight: 700; color: #fff; }
-.nav-links { display: flex; gap: 16px; }
-.logout-form { display: flex; align-items: center; gap: 12px; }
-.user-email { color: #adbac7; font-size: 0.9rem; }
+/* ---- Admin sidebar layout ---- */
+body:has(.sidebar) { display: flex; align-items: stretch; min-height: 100vh; }
+.sidebar {
+  width: 240px; flex-shrink: 0; background: #1f2328;
+  display: flex; flex-direction: column;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto; z-index: 10;
+}
+.sidebar-brand {
+  display: block; padding: 20px 16px 16px;
+  font-weight: 700; font-size: 1rem; color: #fff; letter-spacing: 0.01em;
+  border-bottom: 1px solid rgba(255,255,255,0.08); text-decoration: none;
+}
+.sidebar-brand:hover { text-decoration: none; color: #e6edf3; }
+.sidebar-nav { flex: 1; padding: 10px 8px; display: flex; flex-direction: column; gap: 1px; }
+.sidebar-nav a {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 12px; border-radius: 6px;
+  color: #adbac7; font-size: 0.9rem; text-decoration: none;
+  transition: background 120ms, color 120ms; white-space: nowrap;
+}
+.sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: #fff; text-decoration: none; }
+.sidebar-nav a.nav-active { background: rgba(255,255,255,0.12); color: #fff; font-weight: 600; }
+.sidebar-divider { height: 1px; background: rgba(255,255,255,0.08); margin: 6px 8px; }
+.sidebar-badge {
+  display: inline-block; background: #9a6700; color: #fff8c5;
+  border-radius: 999px; padding: 0 6px; font-size: 0.68rem; font-weight: 700; margin-left: auto;
+}
+.sidebar-bottom {
+  padding: 12px 14px 16px; border-top: 1px solid rgba(255,255,255,0.08);
+}
+.sidebar-user-email {
+  display: block; font-size: 0.78rem; color: #adbac7; margin-bottom: 3px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sidebar-user-role {
+  display: inline-block; font-size: 0.68rem; background: rgba(255,255,255,0.1);
+  color: #adbac7; border-radius: 4px; padding: 1px 6px; margin-bottom: 10px;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.btn-logout {
+  width: 100%; padding: 7px 12px; background: #fff; color: #1f2328;
+  border: none; border-radius: 6px; font-size: 0.875rem; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: background 120ms;
+}
+.btn-logout:hover { background: #e6edf3; }
+.admin-body { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 100vh; }
 
 .page-header { display: flex; align-items: center; justify-content: space-between; }
 .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
@@ -188,6 +228,7 @@ h2 { font-size: 1.15rem; margin: 1.4rem 0 0.6rem; }
 }
 .site-toggle[aria-expanded="true"] .chevron { transform: rotate(180deg); }
 .site-name { font-weight: 600; font-size: 1.05rem; }
+.site-num { font-size: 0.7rem; color: var(--border); font-weight: 500; margin-right: 4px; font-variant-numeric: tabular-nums; user-select: none; min-width: 20px; display: inline-block; text-align: right; }
 
 /* Response time tiers */
 .rt-good { color: var(--ok); font-weight: 600; }
@@ -350,4 +391,12 @@ h2 { font-size: 1.15rem; margin: 1.4rem 0 0.6rem; }
   .window-hint { display: none; }
   .footer-inner { flex-direction: column; align-items: flex-start; gap: 16px; }
   .footer-nav { gap: 16px; flex-wrap: wrap; }
+  .sidebar { width: 100%; height: auto; position: relative; flex-direction: row; flex-wrap: wrap; }
+  .sidebar-nav { flex-direction: row; flex-wrap: wrap; padding: 6px; }
+  .sidebar-nav a { padding: 6px 10px; font-size: 0.82rem; }
+  .sidebar-bottom { width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 14px; }
+  .sidebar-user-role { margin-bottom: 0; }
+  .btn-logout { width: auto; }
+  body:has(.sidebar) { flex-direction: column; }
+  .admin-body { min-height: 0; }
 }

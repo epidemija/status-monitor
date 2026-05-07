@@ -5,10 +5,10 @@
   <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
   <form class="card form" method="post" action="<%= site ? '/admin/sites/' + site.id + '/edit' : '/admin/sites/new' %>">
     <label>Name
-      <input type="text" name="name" required value="<%= site ? site.name : '' %>" />
+      <input type="text" name="name" id="name-input" required value="<%= site ? site.name : '' %>" />
     </label>
     <label>URL (full, with https://)
-      <input type="url" name="url" required value="<%= site ? site.url : 'https://' %>" />
+      <input type="url" name="url" id="url-input" required value="<%= site ? site.url : 'https://' %>" />
     </label>
     <label>Expected HTTP status code
       <input type="number" name="expected_status" min="100" max="599"
@@ -56,5 +56,21 @@
     </div>
   </form>
 </main>
+<script>
+const urlInput = document.getElementById('url-input');
+const nameInput = document.getElementById('name-input');
+if (urlInput && nameInput) {
+  urlInput.addEventListener('blur', async () => {
+    if (nameInput.value.trim()) return;
+    const url = urlInput.value.trim();
+    if (!url.startsWith('http')) return;
+    try {
+      const r = await fetch('/admin/sites/fetch-title?url=' + encodeURIComponent(url));
+      const { title } = await r.json();
+      if (title && !nameInput.value.trim()) nameInput.value = title;
+    } catch (_) {}
+  });
+}
+</script>
 </body>
 </html>

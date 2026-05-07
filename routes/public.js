@@ -198,10 +198,11 @@ router.get('/', (req, res) => {
   const sslExpiringSoon = summaries.some(
     (s) => s.last && s.last.ssl_valid === 1 && s.last.ssl_days_remaining != null && s.last.ssl_days_remaining <= 30
   );
+  const downCount = summaries.filter((s) => s.last && s.last.is_up === 0).length;
   const overall = summaries.length === 0
     ? { label: 'No sites configured', cls: 'muted' }
     : anyDown
-      ? { label: 'Some systems are reporting issues', cls: 'down' }
+      ? { label: `${downCount} of ${summaries.length} system${summaries.length !== 1 ? 's' : ''} affected`, cls: 'down' }
       : allUp && !sslExpiringSoon
         ? { label: 'All systems operational', cls: 'ok' }
         : allUp && sslExpiringSoon
@@ -212,6 +213,8 @@ router.get('/', (req, res) => {
     currentWindow: win,
     measurementRegion: MEASUREMENT_REGION,
     measurementHost: MEASUREMENT_HOST,
+    totalSites: summaries.length,
+    downCount,
   });
 });
 

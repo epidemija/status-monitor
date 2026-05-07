@@ -6,13 +6,21 @@
       <span class="dot dot-<%= overall.cls %>"></span>
       <%= overall.label %>
     </p>
+    <% if (summaries.length > 0) { %>
     <p class="updated">
-      Last updated <%= new Date().toLocaleString() %>
+      <span style="color:rgba(255,255,255,0.75)"><%= summaries.length %> site<%= summaries.length !== 1 ? 's' : '' %> monitored</span>
+      · Last updated <%= new Date().toLocaleString() %>
       <% if (typeof measurementRegion !== 'undefined' && measurementRegion) { %>
         · Measured from <strong><%= measurementRegion %></strong>
       <% } %>
-      · <a class="report-link" href="/report">Report a problem ↗</a>
+      · <a class="report-link" href="/report">Report an issue ↗</a>
     </p>
+    <% } else { %>
+    <p class="updated">
+      Last updated <%= new Date().toLocaleString() %>
+      · <a class="report-link" href="/report">Report an issue ↗</a>
+    </p>
+    <% } %>
   </div>
 </header>
 <main class="container">
@@ -35,13 +43,13 @@
   <ul class="site-list">
     <% const uptimeLabel = { '24h': 'Uptime 24h', '30d': 'Uptime 30d', '1y': 'Uptime 1y' }[currentWindow] || 'Uptime';
        const timelineTitle = { '24h': 'Last 24 hours (1 bar = 1 hour)', '30d': 'Last 30 days (1 bar = 1 day)', '1y': 'Last 52 weeks (1 bar = 1 week)' }[currentWindow]; %>
-    <% summaries.forEach(({ site, last, uptime24hPct, uptime30dPct, uptime1yPct, currentWindowPct, rtStats, rtTier, timeline, codes24h, errorCount24h, recentProblems, recentIncidents }) => { %>
+    <% summaries.forEach(({ site, last, uptime24hPct, uptime30dPct, uptime1yPct, currentWindowPct, rtStats, rtTier, timeline, codes24h, errorCount24h, recentProblems, recentIncidents }, siteIdx) => { %>
       <li class="site-row" data-site-id="<%= site.id %>">
         <button type="button" class="site-toggle" aria-expanded="false" aria-controls="detail-<%= site.id %>">
           <div class="site-main">
             <span class="dot dot-<%= last ? (last.is_up ? 'ok' : 'down') : 'muted' %>"></span>
             <div class="site-text">
-              <span class="site-name"><%= site.name %></span>
+              <span class="site-name"><span class="site-num"><%= String(siteIdx + 1).padStart(2, '0') %></span><%= site.name %></span>
               <span class="site-url"><%= site.url %></span>
             </div>
           </div>
@@ -184,7 +192,7 @@
             <% } %>
 
             <div class="detail-block detail-actions">
-              <a class="btn btn-primary" href="/report?site=<%= site.id %>">Report a problem</a>
+              <a class="btn btn-primary" href="/report?site=<%= site.id %>">Report an issue</a>
               <a class="btn btn-ghost" href="<%= site.url %>" target="_blank" rel="noopener">Visit website ↗</a>
               <a class="btn btn-ghost" href="/api/sites/<%= site.id %>/detail" target="_blank">View history (JSON)</a>
             </div>
@@ -203,7 +211,7 @@
     </div>
     <nav class="footer-nav" aria-label="Footer">
       <a href="/api/status">JSON API</a>
-      <a href="/report">Report website issue</a>
+      <a href="/report">Report an issue</a>
       <a href="/admin">Admin panel</a>
     </nav>
   </div>

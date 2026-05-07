@@ -1,5 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const axios = require('axios');
 const db = require('../db/database');
 const { requireLogin, requireAdmin } = require('../middleware/auth');
 const monitor = require('../lib/monitor');
@@ -13,6 +14,7 @@ router.use(requireLogin);
 router.use((req, res, next) => {
   res.locals.userEmail = req.session.userEmail;
   res.locals.userRole = req.session.userRole;
+  res.locals.currentPath = req.path;
   res.locals.pendingCount = req.session.userRole === 'admin'
     ? db.prepare("SELECT COUNT(*) AS c FROM pending_actions WHERE status = 'pending'").get().c
     : 0;
@@ -214,6 +216,25 @@ router.post('/sites/new', (req, res) => {
     actionData.response_time_crit_ms, actionData.ssl_warn_days
   );
   res.redirect('/admin/sites?flash=Site+added');
+});
+
+// --- Fetch website title for auto-fill ---
+router.get('/sites/fetch-title', async (req, res) => {
+  const url = (req.query.url || '').trim();
+  try {
+    new URL(url);
+    if (!url.startsWith('http://') && !url.startsWith('https://')) throw new Error('not http');
+    const { data } = await axios.get(url, {
+      timeout: 6000, maxRedirects: 5,
+      headers: { 'User-Agent': 'StatusMonitor/1.0 (title-fetch)' },
+      responseType: 'text',
+    });
+    const match = String(data).match(/<title[^>]*>([^<]{1,200})<\/title>/i);
+    const title = match ? match[1].trim().replace(/\s+/g, ' ') : null;
+    res.json({ title });
+  } catch (_) {
+    res.json({ title: null });
+  }
 });
 
 // --- Edit site ---

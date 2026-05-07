@@ -1,23 +1,29 @@
-<nav class="topnav">
-  <div class="container nav-row">
-    <a class="brand" href="/admin">Status Monitor</a>
-    <div class="nav-links">
-      <a href="/admin">Dashboard</a>
-      <a href="/admin/sites">Sites</a>
-      <a href="/admin/incidents">Incidents</a>
-      <a href="/admin/status-codes">Status codes</a>
-      <a href="/admin/reports">Reports</a>
-      <a href="/admin/settings">Settings</a>
-      <% if (userRole === 'admin') { %>
-        <a href="/admin/users">Users</a>
-        <a href="/admin/pending">Pending<% if (pendingCount > 0) { %> <span class="badge badge-warn"><%= pendingCount %></span><% } %></a>
-      <% } %>
-      <a href="/admin/account">Account</a>
-      <a href="/" target="_blank">Public page ↗</a>
-    </div>
-    <form action="/logout" method="post" class="logout-form">
-      <span class="user-email"><%= userEmail %> <span class="muted small">(<%= userRole %>)</span></span>
-      <button type="submit" class="btn btn-ghost">Logout</button>
+<aside class="sidebar">
+  <a class="sidebar-brand" href="/admin">Status Monitor</a>
+  <nav class="sidebar-nav">
+    <a href="/admin" class="<%= currentPath === '/' ? 'nav-active' : '' %>">Dashboard</a>
+    <a href="/admin/sites" class="<%= currentPath.startsWith('/sites') ? 'nav-active' : '' %>">Sites</a>
+    <a href="/admin/incidents" class="<%= currentPath.startsWith('/incidents') ? 'nav-active' : '' %>">Incidents</a>
+    <a href="/admin/status-codes" class="<%= currentPath.startsWith('/status-codes') ? 'nav-active' : '' %>">Status codes</a>
+    <a href="/admin/reports" class="<%= currentPath.startsWith('/reports') ? 'nav-active' : '' %>">Reports</a>
+    <a href="/admin/settings" class="<%= currentPath.startsWith('/settings') ? 'nav-active' : '' %>">Settings</a>
+    <% if (userRole === 'admin') { %>
+      <div class="sidebar-divider"></div>
+      <a href="/admin/users" class="<%= currentPath.startsWith('/users') ? 'nav-active' : '' %>">Users</a>
+      <a href="/admin/pending" class="<%= currentPath.startsWith('/pending') ? 'nav-active' : '' %>">
+        Pending<% if (pendingCount > 0) { %><span class="sidebar-badge"><%= pendingCount %></span><% } %>
+      </a>
+    <% } %>
+    <div class="sidebar-divider"></div>
+    <a href="/admin/account" class="<%= currentPath.startsWith('/account') ? 'nav-active' : '' %>">Account</a>
+    <a href="/" target="_blank" rel="noopener">Public page ↗</a>
+  </nav>
+  <div class="sidebar-bottom">
+    <span class="sidebar-user-email"><%= userEmail %></span>
+    <span class="sidebar-user-role"><%= userRole %></span>
+    <form action="/logout" method="post">
+      <button class="btn-logout" type="submit">Sign out</button>
     </form>
   </div>
-</nav>
+</aside>
+<div class="admin-body">
