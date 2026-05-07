@@ -118,6 +118,11 @@
         </div>
         <% } %>
 
+        <% const anyChildDown = siblings.some(v => v.last && !v.last.is_up); %>
+        <% if (last && last.is_up && anyChildDown) { %>
+          <div class="site-child-warning">⚠ Some secondary domains are not active</div>
+        <% } %>
+
         <% if (last && last.error_message) { %>
           <div class="site-error"><%= last.error_message %></div>
         <% } %>

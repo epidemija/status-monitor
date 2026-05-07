@@ -174,19 +174,21 @@ router.post('/sites/bulk', (req, res) => {
 
 // --- Add site ---
 router.get('/sites/new', (req, res) => {
-  res.render('admin/site-edit', { site: null, error: null });
+  const allSites = db.prepare('SELECT id, name FROM sites ORDER BY name').all();
+  res.render('admin/site-edit', { site: null, error: null, allSites });
 });
 
 router.post('/sites/new', (req, res) => {
+  const allSites = db.prepare('SELECT id, name FROM sites ORDER BY name').all();
   const { name, url, expected_status, expected_keyword, notify_on_down, enabled,
           response_time_warn_ms, response_time_crit_ms, ssl_warn_days } = req.body;
   if (!name || !url) {
-    return res.status(400).render('admin/site-edit', { site: null, error: 'Name and URL are required' });
+    return res.status(400).render('admin/site-edit', { site: null, error: 'Name and URL are required', allSites });
   }
   try {
     new URL(url);
   } catch (e) {
-    return res.status(400).render('admin/site-edit', { site: null, error: 'Invalid URL' });
+    return res.status(400).render('admin/site-edit', { site: null, error: 'Invalid URL', allSites });
   }
 
   const actionData = {
@@ -199,6 +201,7 @@ router.post('/sites/new', (req, res) => {
     response_time_warn_ms: parseInt(response_time_warn_ms || '800', 10) || 800,
     response_time_crit_ms: parseInt(response_time_crit_ms || '2500', 10) || 2500,
     ssl_warn_days: parseInt(ssl_warn_days || '30', 10) || 30,
+    parent_id: req.body.parent_id ? parseInt(req.body.parent_id, 10) || null : null,
   };
 
   if (req.session.userRole === 'moderator') {
@@ -208,49 +211,32 @@ router.post('/sites/new', (req, res) => {
   db.prepare(`
     INSERT INTO sites
       (name, url, enabled, expected_status, expected_keyword, notify_on_down,
-       response_time_warn_ms, response_time_crit_ms, ssl_warn_days)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       response_time_warn_ms, response_time_crit_ms, ssl_warn_days, parent_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     actionData.name, actionData.url, actionData.enabled, actionData.expected_status,
     actionData.expected_keyword, actionData.notify_on_down, actionData.response_time_warn_ms,
-    actionData.response_time_crit_ms, actionData.ssl_warn_days
+    actionData.response_time_crit_ms, actionData.ssl_warn_days, actionData.parent_id
   );
   res.redirect('/admin/sites?flash=Site+added');
-});
-
-// --- Fetch website title for auto-fill ---
-router.get('/sites/fetch-title', async (req, res) => {
-  const url = (req.query.url || '').trim();
-  try {
-    new URL(url);
-    if (!url.startsWith('http://') && !url.startsWith('https://')) throw new Error('not http');
-    const { data } = await axios.get(url, {
-      timeout: 6000, maxRedirects: 5,
-      headers: { 'User-Agent': 'StatusMonitor/1.0 (title-fetch)' },
-      responseType: 'text',
-    });
-    const match = String(data).match(/<title[^>]*>([^<]{1,200})<\/title>/i);
-    const title = match ? match[1].trim().replace(/\s+/g, ' ') : null;
-    res.json({ title });
-  } catch (_) {
-    res.json({ title: null });
-  }
 });
 
 // --- Edit site ---
 router.get('/sites/:id/edit', (req, res) => {
   const site = db.prepare('SELECT * FROM sites WHERE id = ?').get(req.params.id);
   if (!site) return res.status(404).send('Not found');
-  res.render('admin/site-edit', { site, error: null });
+  const allSites = db.prepare('SELECT id, name FROM sites WHERE id != ? ORDER BY name').all(req.params.id);
+  res.render('admin/site-edit', { site, error: null, allSites });
 });
 
 router.post('/sites/:id/edit', (req, res) => {
   const site = db.prepare('SELECT * FROM sites WHERE id = ?').get(req.params.id);
   if (!site) return res.status(404).send('Not found');
+  const allSites = db.prepare('SELECT id, name FROM sites WHERE id != ? ORDER BY name').all(req.params.id);
   const { name, url, expected_status, expected_keyword, notify_on_down, enabled,
           response_time_warn_ms, response_time_crit_ms, ssl_warn_days } = req.body;
   try { new URL(url); } catch (e) {
-    return res.status(400).render('admin/site-edit', { site, error: 'Invalid URL' });
+    return res.status(400).render('admin/site-edit', { site, error: 'Invalid URL', allSites });
   }
 
   const actionData = {
@@ -265,6 +251,7 @@ router.post('/sites/:id/edit', (req, res) => {
     response_time_warn_ms: parseInt(response_time_warn_ms || '800', 10) || 800,
     response_time_crit_ms: parseInt(response_time_crit_ms || '2500', 10) || 2500,
     ssl_warn_days: parseInt(ssl_warn_days || '30', 10) || 30,
+    parent_id: req.body.parent_id ? parseInt(req.body.parent_id, 10) || null : null,
   };
 
   if (req.session.userRole === 'moderator') {
@@ -275,12 +262,13 @@ router.post('/sites/:id/edit', (req, res) => {
     UPDATE sites
     SET name = ?, url = ?, enabled = ?, expected_status = ?,
         expected_keyword = ?, notify_on_down = ?,
-        response_time_warn_ms = ?, response_time_crit_ms = ?, ssl_warn_days = ?
+        response_time_warn_ms = ?, response_time_crit_ms = ?, ssl_warn_days = ?,
+        parent_id = ?
     WHERE id = ?
   `).run(
     actionData.name, actionData.url, actionData.enabled, actionData.expected_status,
     actionData.expected_keyword, actionData.notify_on_down, actionData.response_time_warn_ms,
-    actionData.response_time_crit_ms, actionData.ssl_warn_days, req.params.id
+    actionData.response_time_crit_ms, actionData.ssl_warn_days, actionData.parent_id, req.params.id
   );
   res.redirect('/admin/sites?flash=Site+updated');
 });
@@ -328,7 +316,6 @@ router.post('/sites/check-all', async (req, res) => {
     try {
       const result = await monitor.checkSite(site);
       monitor.recordCheck(result);
-      await monitor.fetchAndUpdateTitle(site);
       checked++;
     } catch (_) {
       errors++;
@@ -351,7 +338,6 @@ router.post('/sites/:id/check', async (req, res) => {
   try {
     const result = await monitor.checkSite(site);
     monitor.recordCheck(result);
-    await monitor.fetchAndUpdateTitle(site);
     res.redirect('/admin/sites?flash=Check+complete');
   } catch (err) {
     res.status(500).send('Check failed: ' + err.message);
@@ -572,7 +558,6 @@ router.post('/pending/:id/approve', requireAdmin, async (req, res) => {
           try {
             const r = await monitor.checkSite(s);
             monitor.recordCheck(r);
-            await monitor.fetchAndUpdateTitle(s);
           } catch (_) {}
         }
         break;
@@ -591,20 +576,22 @@ router.post('/pending/:id/approve', requireAdmin, async (req, res) => {
       case 'site_add':
         db.prepare(`
           INSERT INTO sites (name, url, enabled, expected_status, expected_keyword, notify_on_down,
-                             response_time_warn_ms, response_time_crit_ms, ssl_warn_days)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                             response_time_warn_ms, response_time_crit_ms, ssl_warn_days, parent_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(data.name, data.url, data.enabled, data.expected_status, data.expected_keyword,
-               data.notify_on_down, data.response_time_warn_ms, data.response_time_crit_ms, data.ssl_warn_days);
+               data.notify_on_down, data.response_time_warn_ms, data.response_time_crit_ms,
+               data.ssl_warn_days, data.parent_id ?? null);
         break;
 
       case 'site_edit':
         db.prepare(`
           UPDATE sites SET name=?, url=?, enabled=?, expected_status=?, expected_keyword=?,
-                           notify_on_down=?, response_time_warn_ms=?, response_time_crit_ms=?, ssl_warn_days=?
+                           notify_on_down=?, response_time_warn_ms=?, response_time_crit_ms=?,
+                           ssl_warn_days=?, parent_id=?
           WHERE id=?
         `).run(data.name, data.url, data.enabled, data.expected_status, data.expected_keyword,
                data.notify_on_down, data.response_time_warn_ms, data.response_time_crit_ms,
-               data.ssl_warn_days, data.siteId);
+               data.ssl_warn_days, data.parent_id ?? null, data.siteId);
         break;
 
       case 'site_delete':
@@ -620,7 +607,6 @@ router.post('/pending/:id/approve', requireAdmin, async (req, res) => {
         if (site) {
           const result = await monitor.checkSite(site);
           monitor.recordCheck(result);
-          await monitor.fetchAndUpdateTitle(site);
         }
         break;
       }

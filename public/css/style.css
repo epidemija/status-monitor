@@ -401,6 +401,14 @@ body:has(.sidebar) { display: flex; align-items: stretch; min-height: 100vh; }
 .badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; vertical-align: middle; }
 .badge-warn { background: var(--warn-bg, #fff8c5); color: var(--warn, #9a6700); }
 
+.site-child-warning {
+  padding: 5px 18px 8px;
+  font-size: 0.82rem;
+  color: #9a6700;
+  background: #fffdf0;
+  border-top: 1px solid #f0e07a;
+}
+
 @media (max-width: 720px) {
   .site-toggle { grid-template-columns: 1fr; }
   .timeline { padding: 0 14px 14px; }

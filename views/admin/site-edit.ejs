@@ -10,6 +10,15 @@
     <label>URL (full, with https://)
       <input type="url" name="url" id="url-input" required value="<%= site ? site.url : 'https://' %>" />
     </label>
+    <label>Parent site
+      <select name="parent_id">
+        <option value="">None (standalone / primary)</option>
+        <% allSites.forEach(s => { %>
+          <option value="<%= s.id %>" <%= (site && site.parent_id === s.id) ? 'selected' : '' %>><%= s.name %></option>
+        <% }) %>
+      </select>
+      <small class="muted">If set, this site appears as a secondary domain under the selected primary on the status page.</small>
+    </label>
     <label>Expected HTTP status code
       <input type="number" name="expected_status" min="100" max="599"
              value="<%= site ? site.expected_status : 200 %>" />
@@ -56,21 +65,5 @@
     </div>
   </form>
 </main>
-<script>
-const urlInput = document.getElementById('url-input');
-const nameInput = document.getElementById('name-input');
-if (urlInput && nameInput) {
-  urlInput.addEventListener('blur', async () => {
-    if (nameInput.value.trim()) return;
-    const url = urlInput.value.trim();
-    if (!url.startsWith('http')) return;
-    try {
-      const r = await fetch('/admin/sites/fetch-title?url=' + encodeURIComponent(url));
-      const { title } = await r.json();
-      if (title && !nameInput.value.trim()) nameInput.value = title;
-    } catch (_) {}
-  });
-}
-</script>
 </body>
 </html>

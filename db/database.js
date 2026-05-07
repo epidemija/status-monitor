@@ -139,6 +139,7 @@ const sitesAdditions = [
   ['response_time_warn_ms', 'INTEGER NOT NULL DEFAULT 800'],
   ['response_time_crit_ms', 'INTEGER NOT NULL DEFAULT 2500'],
   ['ssl_warn_days',         'INTEGER NOT NULL DEFAULT 30'],
+  ['parent_id',             'INTEGER'],
 ];
 for (const [col, defn] of sitesAdditions) {
   if (!columnExists('sites', col)) {

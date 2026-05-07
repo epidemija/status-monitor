@@ -188,38 +188,23 @@ function getSiteSummaries(currentWindow = '24h') {
   });
 }
 
-/* ------------------ Domain grouping ------------------ */
-
-function domainStem(url) {
-  try {
-    const hostname = new URL(url).hostname.toLowerCase().replace(/^www\./, '');
-    const parts = hostname.split('.');
-    return parts.length >= 2 ? parts[parts.length - 2] : hostname;
-  } catch (_) { return url; }
-}
+/* ------------------ Domain grouping (manual parent/child) ------------------ */
 
 function groupSummaries(summaries) {
-  const groups = new Map();
+  const byId = new Map(summaries.map(s => [s.site.id, s]));
+  const childrenMap = new Map();
+  const primaries = [];
+
   for (const s of summaries) {
-    const stem = domainStem(s.site.url);
-    if (!groups.has(stem)) groups.set(stem, []);
-    groups.get(stem).push(s);
+    if (s.site.parent_id && byId.has(s.site.parent_id)) {
+      if (!childrenMap.has(s.site.parent_id)) childrenMap.set(s.site.parent_id, []);
+      childrenMap.get(s.site.parent_id).push(s);
+    } else {
+      primaries.push(s);
+    }
   }
-  const tldPriority = (url) => {
-    try {
-      const h = new URL(url).hostname.toLowerCase();
-      if (h.endsWith('.com')) return 0;
-      if (h.endsWith('.de')) return 1;
-      if (h.endsWith('.org')) return 2;
-      if (h.endsWith('.net')) return 3;
-      return 4;
-    } catch (_) { return 9; }
-  };
-  return [...groups.values()].map((group) =>
-    group.length > 1
-      ? [...group].sort((a, b) => tldPriority(a.site.url) - tldPriority(b.site.url))
-      : group
-  );
+
+  return primaries.map(p => [p, ...(childrenMap.get(p.site.id) || [])]);
 }
 
 /* ------------------ Public status page ------------------ */
@@ -227,29 +212,43 @@ function groupSummaries(summaries) {
 router.get('/', (req, res) => {
   const win = ['24h', '30d', '1y'].includes(req.query.window) ? req.query.window : '24h';
   const summaries = getSiteSummaries(win);
-  const allUp = summaries.length > 0 && summaries.every((s) => s.last && s.last.is_up === 1);
-  const anyDown = summaries.some((s) => s.last && s.last.is_up === 0);
-  const sslExpiringSoon = summaries.some(
-    (s) => s.last && s.last.ssl_valid === 1 && s.last.ssl_days_remaining != null && s.last.ssl_days_remaining <= 30
-  );
-  const downCount = summaries.filter((s) => s.last && s.last.is_up === 0).length;
-  const overall = summaries.length === 0
-    ? { label: 'No sites configured', cls: 'muted' }
-    : anyDown
-      ? { label: `${downCount} of ${summaries.length} system${summaries.length !== 1 ? 's' : ''} affected`, cls: 'down' }
-      : allUp && !sslExpiringSoon
-        ? { label: 'All systems operational', cls: 'ok' }
-        : allUp && sslExpiringSoon
-          ? { label: 'All systems operational — SSL renewal needed soon', cls: 'warn' }
-          : { label: 'Status unknown — waiting for first checks', cls: 'muted' };
   const groups = groupSummaries(summaries);
+
+  const primarySummaries = groups.map(g => g[0]);
+  const childSummaries = groups.flatMap(g => g.slice(1));
+
+  const anyPrimaryDown = primarySummaries.some(s => s.last && s.last.is_up === 0);
+  const allPrimaryUp = primarySummaries.length > 0 && primarySummaries.every(s => s.last && s.last.is_up === 1);
+  const anyChildDown = childSummaries.some(s => s.last && s.last.is_up === 0);
+  const primaryDownCount = primarySummaries.filter(s => s.last && s.last.is_up === 0).length;
+  const sslExpiringSoon = summaries.some(
+    s => s.last && s.last.ssl_valid === 1 && s.last.ssl_days_remaining != null && s.last.ssl_days_remaining <= 30
+  );
+
+  let overall;
+  if (summaries.length === 0) {
+    overall = { label: 'No sites configured', cls: 'muted' };
+  } else if (anyPrimaryDown) {
+    overall = { label: `${primaryDownCount} of ${primarySummaries.length} system${primarySummaries.length !== 1 ? 's' : ''} affected`, cls: 'down' };
+  } else if (allPrimaryUp && anyChildDown && sslExpiringSoon) {
+    overall = { label: 'All systems operational · ⚠ Some secondary domains are not active — SSL renewal needed soon', cls: 'warn' };
+  } else if (allPrimaryUp && anyChildDown) {
+    overall = { label: 'All systems operational · ⚠ Some secondary domains are not active', cls: 'ok' };
+  } else if (allPrimaryUp && sslExpiringSoon) {
+    overall = { label: 'All systems operational — SSL renewal needed soon', cls: 'warn' };
+  } else if (allPrimaryUp) {
+    overall = { label: 'All systems operational', cls: 'ok' };
+  } else {
+    overall = { label: 'Status unknown — waiting for first checks', cls: 'muted' };
+  }
+
   res.render('status', {
     summaries, groups, overall,
     currentWindow: win,
     measurementRegion: MEASUREMENT_REGION,
     measurementHost: MEASUREMENT_HOST,
     totalSites: summaries.length,
-    downCount,
+    downCount: primaryDownCount,
   });
 });
 
