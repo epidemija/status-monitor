@@ -194,14 +194,20 @@
     <% }) %>
   </ul>
 
-  <footer class="footer">
-    <p>
-      <a href="/api/status">JSON API</a> ·
-      <a href="/report">Report a problem</a> ·
-      <a href="/admin">Admin</a>
-    </p>
-  </footer>
 </main>
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <span class="footer-logo">Status Monitor</span>
+      <span class="footer-tagline">Real-time system health overview</span>
+    </div>
+    <nav class="footer-nav" aria-label="Footer">
+      <a href="/api/status">JSON API</a>
+      <a href="/report">Report an issue</a>
+      <a href="/admin">Admin panel</a>
+    </nav>
+  </div>
+</footer>
 <script>
   // Expandable rows
   document.querySelectorAll('.site-toggle').forEach((btn) => {

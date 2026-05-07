@@ -3,6 +3,7 @@
   <form class="auth-card" action="/login" method="post">
     <h1>Status Monitor</h1>
     <p class="muted">Sign in to manage monitored sites.</p>
+    <% if (flash) { %><div class="alert alert-info"><%= decodeURIComponent(flash) %></div><% } %>
     <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
     <label>Email
       <input type="email" name="email" required autofocus autocomplete="username" />
@@ -11,7 +12,10 @@
       <input type="password" name="password" required autocomplete="current-password" />
     </label>
     <button class="btn btn-primary" type="submit">Sign in</button>
-    <p class="muted small"><a href="/">← Back to public status</a></p>
+    <p class="muted small" style="display:flex; justify-content:space-between; margin-top:14px;">
+      <a href="/">← Public status</a>
+      <a href="/forgot-password">Forgot password?</a>
+    </p>
   </form>
 </main>
 </body>
