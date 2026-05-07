@@ -401,6 +401,17 @@ body:has(.sidebar) { display: flex; align-items: stretch; min-height: 100vh; }
 .badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; vertical-align: middle; }
 .badge-warn { background: var(--warn-bg, #fff8c5); color: var(--warn, #9a6700); }
 
+.drag-handle {
+  cursor: grab;
+  color: var(--muted);
+  font-size: 1rem;
+  padding: 0 4px;
+  user-select: none;
+  line-height: 1;
+}
+.drag-handle:active { cursor: grabbing; }
+.sortable-ghost { opacity: 0.4; background: #f0f6ff; }
+
 .site-child-warning {
   padding: 5px 18px 8px;
   font-size: 0.82rem;

@@ -17,9 +17,10 @@
 
   <form id="bulk-delete-form" action="/admin/sites/bulk-delete" method="post" style="display:none"></form>
 
-  <table class="table">
+  <table class="table" id="sites-table">
     <thead>
       <tr>
+        <th style="width:28px"></th>
         <th style="width:36px"><input type="checkbox" id="select-all" title="Select all"></th>
         <th>Name</th>
         <th>URL</th>
@@ -30,9 +31,10 @@
         <th></th>
       </tr>
     </thead>
-    <tbody>
+    <tbody id="sites-tbody">
       <% sites.forEach(s => { %>
-        <tr>
+        <tr data-site-id="<%= s.id %>">
+          <td><span class="drag-handle" title="Drag to reorder">⠿</span></td>
           <td><input type="checkbox" class="row-cb" value="<%= s.id %>"></td>
           <td><strong><%= s.name %></strong></td>
           <td><a href="<%= s.url %>" target="_blank" rel="noopener"><%= s.url %></a></td>
@@ -55,7 +57,30 @@
     </tbody>
   </table>
 </main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
 <script>
+  // --- Drag-and-drop reorder ---
+  const tbody = document.getElementById('sites-tbody');
+  let saveTimer = null;
+
+  Sortable.create(tbody, {
+    handle: '.drag-handle',
+    animation: 150,
+    ghostClass: 'sortable-ghost',
+    onEnd() {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        const ids = [...tbody.querySelectorAll('tr')].map(tr => Number(tr.dataset.siteId));
+        fetch('/admin/sites/reorder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        }).catch(() => {});
+      }, 400);
+    },
+  });
+
+  // --- Bulk delete ---
   const selectAll = document.getElementById('select-all');
   const deleteBtn = document.getElementById('delete-selected');
 
@@ -72,11 +97,10 @@
 
   document.querySelectorAll('.row-cb').forEach(cb => {
     cb.addEventListener('change', () => {
-      selectAll.indeterminate = false;
       const all = document.querySelectorAll('.row-cb');
       const checked = document.querySelectorAll('.row-cb:checked');
       if (checked.length === 0) selectAll.checked = false;
-      else if (checked.length === all.length) selectAll.checked = true;
+      else if (checked.length === all.length) { selectAll.checked = true; selectAll.indeterminate = false; }
       else { selectAll.checked = false; selectAll.indeterminate = true; }
       updateDeleteBtn();
     });

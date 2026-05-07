@@ -144,7 +144,7 @@ function buildTimeline(siteId, windowKey) {
 }
 
 function getSiteSummaries(currentWindow = '24h') {
-  const sites = db.prepare('SELECT * FROM sites WHERE enabled = 1 ORDER BY name').all();
+  const sites = db.prepare('SELECT * FROM sites WHERE enabled = 1 ORDER BY sort_order ASC, name ASC').all();
   return sites.map((site) => {
     const last = lastCheckStmt.get(site.id);
     const uptime24h = uptimeStmt.get(site.id, '-1 day');

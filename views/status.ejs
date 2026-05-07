@@ -48,11 +48,12 @@
     <% groups.forEach((group, groupIdx) => {
        const { site, last, uptime24hPct, uptime30dPct, uptime1yPct, currentWindowPct, rtStats, rtTier, timeline, codes24h, errorCount24h, recentProblems, recentIncidents } = group[0];
        const siblings = group.slice(1);
+       const childrenDown = siblings.some(v => v.last && !v.last.is_up);
     %>
       <li class="site-row" data-site-id="<%= site.id %>">
         <button type="button" class="site-toggle" aria-expanded="false" aria-controls="detail-<%= site.id %>">
           <div class="site-main">
-            <span class="dot dot-<%= last ? (last.is_up ? 'ok' : 'down') : 'muted' %>"></span>
+            <span class="dot dot-<%= last ? (last.is_up ? (childrenDown ? 'warn' : 'ok') : 'down') : 'muted' %>"></span>
             <div class="site-text">
               <span class="site-name"><span class="site-num"><%= String(groupIdx + 1).padStart(2, '0') %></span><%= site.name %></span>
               <span class="site-url"><%= site.url %></span>
@@ -118,9 +119,10 @@
         </div>
         <% } %>
 
-        <% const anyChildDown = siblings.some(v => v.last && !v.last.is_up); %>
-        <% if (last && last.is_up && anyChildDown) { %>
-          <div class="site-child-warning">⚠ Some secondary domains are not active</div>
+        <% if (last && last.is_up && childrenDown) { %>
+          <div class="site-child-warning">
+            <span class="dot dot-warn" style="width:10px;height:10px;display:inline-block;vertical-align:middle;margin-right:6px;flex-shrink:0;"></span>Some secondary domains are not active
+          </div>
         <% } %>
 
         <% if (last && last.error_message) { %>

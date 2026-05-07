@@ -33,7 +33,7 @@ function queueAction(req, res, actionType, actionData, description, redirectTo) 
 
 // --- Dashboard ---
 router.get('/', (req, res) => {
-  const sites = db.prepare('SELECT * FROM sites ORDER BY name').all();
+  const sites = db.prepare('SELECT * FROM sites ORDER BY sort_order ASC, name ASC').all();
   const lastCheckStmt = db.prepare(
     'SELECT * FROM checks WHERE site_id = ? ORDER BY id DESC LIMIT 1'
   );
@@ -113,7 +113,7 @@ router.get('/status-codes', (req, res) => {
 
 // --- Sites list ---
 router.get('/sites', (req, res) => {
-  const sites = db.prepare('SELECT * FROM sites ORDER BY name').all();
+  const sites = db.prepare('SELECT * FROM sites ORDER BY sort_order ASC, name ASC').all();
   res.render('admin/sites', { sites, flash: req.query.flash || null });
 });
 
@@ -271,6 +271,17 @@ router.post('/sites/:id/edit', (req, res) => {
     actionData.response_time_crit_ms, actionData.ssl_warn_days, actionData.parent_id, req.params.id
   );
   res.redirect('/admin/sites?flash=Site+updated');
+});
+
+// --- Reorder sites (drag-and-drop; JSON body { ids: [1,2,3,...] }) ---
+router.post('/sites/reorder', (req, res) => {
+  const ids = [].concat(req.body.ids || []).map(Number).filter(Boolean);
+  if (ids.length === 0) return res.status(400).json({ ok: false, error: 'No ids provided' });
+  const stmt = db.prepare('UPDATE sites SET sort_order = ? WHERE id = ?');
+  db.transaction((orderedIds) => {
+    orderedIds.forEach((id, idx) => stmt.run(idx, id));
+  })(ids);
+  res.json({ ok: true });
 });
 
 // --- Bulk delete sites ---

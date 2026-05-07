@@ -155,6 +155,15 @@ if (!columnExists('checks', 'initial_status_code')) {
   console.log('[db] Migrated checks: added column initial_status_code');
 }
 
+// `sort_order` drives the drag-and-drop position on the admin sites list
+// and the public status page. Initialised to the site's id so existing
+// sites keep their alphabetical-ish order.
+if (!columnExists('sites', 'sort_order')) {
+  db.exec('ALTER TABLE sites ADD COLUMN sort_order INTEGER;');
+  db.exec('UPDATE sites SET sort_order = id;');
+  console.log('[db] Migrated sites: added column sort_order');
+}
+
 // --- Default settings ---
 const defaultSettings = {
   email_enabled: '0',
