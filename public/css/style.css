@@ -302,6 +302,9 @@ h2 { font-size: 1.15rem; margin: 1.4rem 0 0.6rem; }
 .window-tabs a.active:hover { background: #0858be; color: #fff; }
 .window-hint { margin-left: auto; }
 
+.badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; vertical-align: middle; }
+.badge-warn { background: var(--warn-bg, #fff8c5); color: var(--warn, #9a6700); }
+
 @media (max-width: 720px) {
   .site-toggle { grid-template-columns: 1fr; }
   .timeline { padding: 0 14px 14px; }

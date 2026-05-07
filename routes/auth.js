@@ -18,6 +18,7 @@ router.post('/login', (req, res) => {
   }
   req.session.userId = user.id;
   req.session.userEmail = user.email;
+  req.session.userRole = user.role;
   res.redirect('/admin');
 });
 

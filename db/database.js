@@ -105,6 +105,20 @@ CREATE TABLE IF NOT EXISTS ssl_alert_log (
   FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
   UNIQUE(site_id, threshold_days, cert_expires_at)
 );
+
+CREATE TABLE IF NOT EXISTS pending_actions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  user_email TEXT NOT NULL,
+  action_type TEXT NOT NULL,
+  action_data TEXT NOT NULL,
+  description TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  reviewed_at DATETIME,
+  review_note TEXT,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 `);
 
 // --- Defensive ALTER TABLE: add new columns to `sites` if they don't exist yet.

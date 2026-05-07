@@ -8,11 +8,15 @@
       <a href="/admin/status-codes">Status codes</a>
       <a href="/admin/reports">Reports</a>
       <a href="/admin/settings">Settings</a>
+      <% if (userRole === 'admin') { %>
+        <a href="/admin/users">Users</a>
+        <a href="/admin/pending">Pending<% if (pendingCount > 0) { %> <span class="badge badge-warn"><%= pendingCount %></span><% } %></a>
+      <% } %>
       <a href="/admin/account">Account</a>
       <a href="/" target="_blank">Public page ↗</a>
     </div>
     <form action="/logout" method="post" class="logout-form">
-      <span class="user-email"><%= userEmail %></span>
+      <span class="user-email"><%= userEmail %> <span class="muted small">(<%= userRole %>)</span></span>
       <button type="submit" class="btn btn-ghost">Logout</button>
     </form>
   </div>

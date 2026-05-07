@@ -1,0 +1,66 @@
+<%- include('../partials/head', { title: 'Admin · Pending Actions' }) %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <h1>Pending Actions</h1>
+  <% if (flash) { %><div class="alert alert-info"><%= decodeURIComponent(flash) %></div><% } %>
+  <p class="muted">
+    Changes submitted by moderators appear here. Approve to execute them, or reject to discard.
+    The moderator receives an email notification either way (when email is configured).
+  </p>
+
+  <nav class="window-tabs" aria-label="Filter">
+    <% const labels = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected', all: 'All' }; %>
+    <% ['pending','approved','rejected','all'].forEach(f => { %>
+      <a href="?filter=<%= f %>" class="<%= currentFilter === f ? 'active' : '' %>">
+        <%= labels[f] %><% if (counts[f]) { %> <span class="muted small">(<%= counts[f] %>)</span><% } %>
+      </a>
+    <% }) %>
+  </nav>
+
+  <% if (actions.length === 0) { %>
+    <p class="muted">No actions to show.</p>
+  <% } %>
+
+  <ul class="site-list">
+    <% actions.forEach(action => { %>
+      <li class="site-row" style="padding: 16px 20px;">
+        <div class="site-main" style="align-items: flex-start; gap: 12px;">
+          <span class="dot dot-<%= action.status === 'pending' ? 'warn' : action.status === 'approved' ? 'ok' : 'down' %>"></span>
+          <div style="flex: 1; min-width: 0;">
+            <div style="display:flex; align-items:center; gap: 8px; flex-wrap: wrap;">
+              <strong><%= action.description %></strong>
+              <span class="status-pill code-<%= action.status === 'approved' ? 'ok' : action.status === 'rejected' ? 'server' : 'redirect' %>">
+                <%= action.status %>
+              </span>
+            </div>
+            <div class="muted small" style="margin-top: 4px;">
+              Submitted by <strong><%= action.user_email %></strong>
+              · <%= new Date(action.created_at + 'Z').toLocaleString() %>
+              <% if (action.reviewed_at) { %>
+                · Reviewed <%= new Date(action.reviewed_at + 'Z').toLocaleString() %>
+              <% } %>
+            </div>
+            <% if (action.review_note) { %>
+              <div class="muted small" style="margin-top: 4px;">Note: <%= action.review_note %></div>
+            <% } %>
+          </div>
+        </div>
+
+        <% if (action.status === 'pending') { %>
+          <div style="display:flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
+            <form action="/admin/pending/<%= action.id %>/approve" method="post" style="display:inline">
+              <button class="btn btn-primary" type="submit">Approve &amp; execute</button>
+            </form>
+            <form action="/admin/pending/<%= action.id %>/reject" method="post" style="display:inline"
+                  onsubmit="event.preventDefault(); const note = prompt('Rejection note (optional):') ?? ''; this.querySelector('[name=note]').value = note; this.submit();">
+              <input type="hidden" name="note" value="" />
+              <button class="btn btn-ghost" type="submit">Reject</button>
+            </form>
+          </div>
+        <% } %>
+      </li>
+    <% }) %>
+  </ul>
+</main>
+</body>
+</html>
