@@ -285,6 +285,22 @@ router.post('/sites/:id/edit', (req, res) => {
   res.redirect('/admin/sites?flash=Site+updated');
 });
 
+// --- Bulk delete sites ---
+router.post('/sites/bulk-delete', (req, res) => {
+  const ids = [].concat(req.body.ids || []).map(Number).filter(Boolean);
+  if (ids.length === 0) return res.redirect('/admin/sites?flash=Nothing+selected');
+
+  if (req.session.userRole === 'moderator') {
+    const names = db.prepare(`SELECT name FROM sites WHERE id IN (${ids.map(() => '?').join(',')})`)
+      .all(...ids).map((r) => r.name).join(', ');
+    return queueAction(req, res, 'site_bulk_delete', { ids },
+      `Delete ${ids.length} site(s): ${names}`, '/admin/sites');
+  }
+
+  db.prepare(`DELETE FROM sites WHERE id IN (${ids.map(() => '?').join(',')})`).run(...ids);
+  res.redirect('/admin/sites?flash=' + encodeURIComponent(`${ids.length} site(s) deleted`));
+});
+
 // --- Delete site ---
 router.post('/sites/:id/delete', (req, res) => {
   const site = db.prepare('SELECT * FROM sites WHERE id = ?').get(req.params.id);
@@ -593,6 +609,10 @@ router.post('/pending/:id/approve', requireAdmin, async (req, res) => {
 
       case 'site_delete':
         db.prepare('DELETE FROM sites WHERE id = ?').run(data.siteId);
+        break;
+
+      case 'site_bulk_delete':
+        db.prepare(`DELETE FROM sites WHERE id IN (${data.ids.map(() => '?').join(',')})`).run(...data.ids);
         break;
 
       case 'site_check': {

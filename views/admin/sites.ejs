@@ -4,6 +4,7 @@
   <div class="page-header">
     <h1>Sites</h1>
     <div style="display:flex; gap:8px; align-items:center;">
+      <button type="button" class="btn btn-danger" id="delete-selected" disabled onclick="submitBulkDelete()">Delete selected</button>
       <form action="/admin/sites/check-all" method="post" style="display:inline"
             onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='Checking…';">
         <button class="btn btn-ghost" type="submit">Check all now</button>
@@ -14,9 +15,12 @@
   </div>
   <% if (flash) { %><div class="alert alert-info"><%= flash %></div><% } %>
 
+  <form id="bulk-delete-form" action="/admin/sites/bulk-delete" method="post" style="display:none"></form>
+
   <table class="table">
     <thead>
       <tr>
+        <th style="width:36px"><input type="checkbox" id="select-all" title="Select all"></th>
         <th>Name</th>
         <th>URL</th>
         <th>Enabled</th>
@@ -29,6 +33,7 @@
     <tbody>
       <% sites.forEach(s => { %>
         <tr>
+          <td><input type="checkbox" class="row-cb" value="<%= s.id %>"></td>
           <td><strong><%= s.name %></strong></td>
           <td><a href="<%= s.url %>" target="_blank" rel="noopener"><%= s.url %></a></td>
           <td><%= s.enabled ? 'Yes' : 'No' %></td>
@@ -50,5 +55,41 @@
     </tbody>
   </table>
 </main>
+<script>
+  const selectAll = document.getElementById('select-all');
+  const deleteBtn = document.getElementById('delete-selected');
+
+  function updateDeleteBtn() {
+    const n = document.querySelectorAll('.row-cb:checked').length;
+    deleteBtn.disabled = n === 0;
+    deleteBtn.textContent = n > 0 ? `Delete selected (${n})` : 'Delete selected';
+  }
+
+  selectAll.addEventListener('change', () => {
+    document.querySelectorAll('.row-cb').forEach(cb => { cb.checked = selectAll.checked; });
+    updateDeleteBtn();
+  });
+
+  document.querySelectorAll('.row-cb').forEach(cb => {
+    cb.addEventListener('change', () => {
+      selectAll.indeterminate = false;
+      const all = document.querySelectorAll('.row-cb');
+      const checked = document.querySelectorAll('.row-cb:checked');
+      if (checked.length === 0) selectAll.checked = false;
+      else if (checked.length === all.length) selectAll.checked = true;
+      else { selectAll.checked = false; selectAll.indeterminate = true; }
+      updateDeleteBtn();
+    });
+  });
+
+  function submitBulkDelete() {
+    const checked = [...document.querySelectorAll('.row-cb:checked')].map(cb => cb.value);
+    if (checked.length === 0) return;
+    if (!confirm(`Delete ${checked.length} site(s)? This cannot be undone.`)) return;
+    const form = document.getElementById('bulk-delete-form');
+    form.innerHTML = checked.map(id => `<input type="hidden" name="ids" value="${id}">`).join('');
+    form.submit();
+  }
+</script>
 </body>
 </html>
