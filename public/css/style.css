@@ -55,10 +55,10 @@ h2 { font-size: 1.15rem; margin: 1.4rem 0 0.6rem; }
               padding: 8px 12px; border-radius: 6px; font-size: 0.9rem; }
 .empty { color: var(--muted); padding: 24px; text-align: center; }
 .site-footer {
-  background: #1f2328;
+  background: transparent;
   margin-top: 56px;
-  padding: 28px 0;
-  border-top: 1px solid #30363d;
+  padding: 28px 0 40px;
+  border-top: 1px solid var(--border);
 }
 .footer-inner {
   display: flex;
@@ -75,26 +75,24 @@ h2 { font-size: 1.15rem; margin: 1.4rem 0 0.6rem; }
 .footer-logo {
   font-weight: 700;
   font-size: 0.95rem;
-  color: #e6edf3;
+  color: var(--text);
   letter-spacing: 0.01em;
 }
 .footer-tagline {
   font-size: 0.8rem;
-  color: #8b949e;
+  color: var(--muted);
 }
 .footer-nav {
   display: flex;
   gap: 24px;
 }
 .footer-nav a {
-  color: #8b949e;
+  color: var(--accent);
   font-size: 0.875rem;
   text-decoration: none;
-  transition: color 120ms;
 }
 .footer-nav a:hover {
-  color: #e6edf3;
-  text-decoration: none;
+  text-decoration: underline;
 }
 
 /* ---- Auth ---- */

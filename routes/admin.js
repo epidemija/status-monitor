@@ -115,6 +115,61 @@ router.get('/sites', (req, res) => {
   res.render('admin/sites', { sites, flash: req.query.flash || null });
 });
 
+// --- Bulk add sites ---
+router.get('/sites/bulk', (req, res) => {
+  res.render('admin/site-bulk', { flash: req.query.flash || null, errors: [] });
+});
+
+router.post('/sites/bulk', (req, res) => {
+  const lines = (req.body.bulk || '').split('\n');
+  const sites = [];
+  const errors = [];
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) continue;
+
+    let name, url;
+    const commaIdx = line.indexOf(',');
+    if (commaIdx > 0) {
+      name = line.slice(0, commaIdx).trim();
+      url  = line.slice(commaIdx + 1).trim();
+    } else {
+      url = line;
+      try { name = new URL(url).hostname; } catch (_) { name = url; }
+    }
+
+    if (!name) { errors.push(`Missing name: "${line}"`); continue; }
+    try { new URL(url); } catch (_) { errors.push(`Invalid URL on line: "${line}"`); continue; }
+
+    sites.push({ name, url });
+  }
+
+  if (sites.length === 0) {
+    return res.render('admin/site-bulk', {
+      flash: null,
+      errors: errors.length ? errors : ['No valid sites found. Check the format and try again.'],
+    });
+  }
+
+  if (req.session.userRole === 'moderator') {
+    return queueAction(req, res, 'site_bulk_add', { sites },
+      `Bulk add ${sites.length} site(s): ${sites.map((s) => s.name).join(', ')}`,
+      '/admin/sites');
+  }
+
+  const insert = db.prepare(`
+    INSERT INTO sites (name, url, enabled, expected_status, notify_on_down,
+                       response_time_warn_ms, response_time_crit_ms, ssl_warn_days)
+    VALUES (?, ?, 1, 200, 1, 800, 2500, 30)
+  `);
+  const tx = db.transaction((rows) => rows.forEach((r) => insert.run(r.name, r.url)));
+  tx(sites);
+
+  const msg = encodeURIComponent(`${sites.length} site(s) added${errors.length ? ` (${errors.length} line(s) skipped)` : ''}`);
+  res.redirect('/admin/sites?flash=' + msg);
+});
+
 // --- Add site ---
 router.get('/sites/new', (req, res) => {
   res.render('admin/site-edit', { site: null, error: null });
@@ -450,6 +505,16 @@ router.post('/pending/:id/approve', requireAdmin, async (req, res) => {
   const data = JSON.parse(action.action_data);
   try {
     switch (action.action_type) {
+      case 'site_bulk_add': {
+        const bulkInsert = db.prepare(`
+          INSERT INTO sites (name, url, enabled, expected_status, notify_on_down,
+                             response_time_warn_ms, response_time_crit_ms, ssl_warn_days)
+          VALUES (?, ?, 1, 200, 1, 800, 2500, 30)
+        `);
+        db.transaction((rows) => rows.forEach((r) => bulkInsert.run(r.name, r.url)))(data.sites);
+        break;
+      }
+
       case 'site_add':
         db.prepare(`
           INSERT INTO sites (name, url, enabled, expected_status, expected_keyword, notify_on_down,

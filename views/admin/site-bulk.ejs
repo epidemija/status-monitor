@@ -1,0 +1,41 @@
+<%- include('../partials/head', { title: 'Admin · Bulk add sites' }) %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <div class="page-header">
+    <h1>Bulk add sites</h1>
+    <a class="btn btn-ghost" href="/admin/sites">← Back to sites</a>
+  </div>
+
+  <% if (flash) { %><div class="alert alert-info"><%= decodeURIComponent(flash) %></div><% } %>
+  <% if (errors && errors.length) { %>
+    <div class="alert alert-error">
+      <strong>Some lines were skipped:</strong>
+      <ul style="margin:6px 0 0; padding-left:18px;">
+        <% errors.forEach(e => { %><li><%= e %></li><% }) %>
+      </ul>
+    </div>
+  <% } %>
+
+  <div class="card">
+    <p class="muted">
+      Paste one site per line. Each line can be:<br>
+      <code>Name, https://example.com</code> — name and URL separated by a comma<br>
+      <code>https://example.com</code> — URL only (name is taken from the hostname)<br>
+      Lines starting with <code>#</code> and blank lines are ignored.
+    </p>
+    <form class="form" action="/admin/sites/bulk" method="post">
+      <label>Sites
+        <textarea name="bulk" rows="14" required
+                  placeholder="Wirth Gruppe, https://wirthgruppe.com&#10;https://wirsol.de&#10;# this line is a comment"
+                  style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px;
+                         font-size:0.95rem; font-family:monospace; margin-top:4px; background:#fff; resize:vertical;"></textarea>
+      </label>
+      <div class="form-actions">
+        <a class="btn btn-ghost" href="/admin/sites">Cancel</a>
+        <button class="btn btn-primary" type="submit">Add all sites</button>
+      </div>
+    </form>
+  </div>
+</main>
+</body>
+</html>
