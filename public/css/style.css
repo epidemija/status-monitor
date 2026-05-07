@@ -413,6 +413,9 @@ body:has(.sidebar) { display: flex; align-items: stretch; min-height: 100vh; }
 .sortable-ghost { opacity: 0.4; background: #f0f6ff; }
 
 .site-child-warning {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   padding: 5px 18px 8px;
   font-size: 0.82rem;
   color: #9a6700;

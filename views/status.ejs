@@ -5,6 +5,9 @@
     <p class="overall">
       <span class="dot dot-<%= overall.cls %>"></span>
       <%= overall.label %>
+      <% if (childrenWarning) { %>
+        &nbsp;·&nbsp;<span class="dot dot-warn" style="width:11px;height:11px;display:inline-block;vertical-align:middle;margin-right:5px;"></span>Some secondary domains are not active
+      <% } %>
     </p>
     <% if (summaries.length > 0) { %>
     <p class="updated">
@@ -121,7 +124,7 @@
 
         <% if (last && last.is_up && childrenDown) { %>
           <div class="site-child-warning">
-            <span class="dot dot-warn" style="width:10px;height:10px;display:inline-block;vertical-align:middle;margin-right:6px;flex-shrink:0;"></span>Some secondary domains are not active
+            <span class="dot dot-warn" style="width:10px;height:10px;flex-shrink:0;"></span>Some secondary domains are not active
           </div>
         <% } %>
 

@@ -231,9 +231,9 @@ router.get('/', (req, res) => {
   } else if (anyPrimaryDown) {
     overall = { label: `${primaryDownCount} of ${primarySummaries.length} system${primarySummaries.length !== 1 ? 's' : ''} affected`, cls: 'down' };
   } else if (allPrimaryUp && anyChildDown && sslExpiringSoon) {
-    overall = { label: 'All systems operational · ⚠ Some secondary domains are not active — SSL renewal needed soon', cls: 'warn' };
+    overall = { label: 'All systems operational — SSL renewal needed soon', cls: 'warn' };
   } else if (allPrimaryUp && anyChildDown) {
-    overall = { label: 'All systems operational · ⚠ Some secondary domains are not active', cls: 'ok' };
+    overall = { label: 'All systems operational', cls: 'ok' };
   } else if (allPrimaryUp && sslExpiringSoon) {
     overall = { label: 'All systems operational — SSL renewal needed soon', cls: 'warn' };
   } else if (allPrimaryUp) {
@@ -244,6 +244,7 @@ router.get('/', (req, res) => {
 
   res.render('status', {
     summaries, groups, overall,
+    childrenWarning: allPrimaryUp && anyChildDown,
     currentWindow: win,
     measurementRegion: MEASUREMENT_REGION,
     measurementHost: MEASUREMENT_HOST,
