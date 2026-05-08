@@ -1,0 +1,72 @@
+<%- include('../partials/head', { title: 'Admin · Notification Log' }) %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <h1>Notification log</h1>
+  <% if (flash) { %><div class="alert alert-info"><%= decodeURIComponent(flash) %></div><% } %>
+
+  <% if (cooldowns.length > 0) { %>
+  <div class="card" style="margin-bottom:20px">
+    <h2>Cooldown status <span class="muted small">(ALERT_COOLDOWN_MINUTES = <%= parseInt(process.env.ALERT_COOLDOWN_MINUTES || '60') %> min)</span></h2>
+    <p class="muted small">If a channel is in cooldown, alerts for that site/channel are skipped until it expires. This prevents notification spam during long outages.</p>
+    <table class="table" style="margin-top:8px">
+      <thead><tr><th>Site</th><th>Channel</th><th>Last sent</th><th>Status</th></tr></thead>
+      <tbody>
+        <% cooldowns.forEach(c => { %>
+        <tr>
+          <td><%= c.site_name || ('Site #' + c.site_id) %></td>
+          <td><strong><%= c.channel %></strong></td>
+          <td><%= new Date(c.last_ok_at + 'Z').toLocaleString() %> (<%= c.minutesAgo %> min ago)</td>
+          <td>
+            <% if (c.blocked) { %>
+              <span class="meta-value warn">⏳ Cooldown active — next alert in ~<%= parseInt(process.env.ALERT_COOLDOWN_MINUTES || '60') - c.minutesAgo %> min</span>
+            <% } else { %>
+              <span class="meta-value ok">✓ Ready to send</span>
+            <% } %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+
+  <div class="card">
+    <h2>Recent notifications <span class="muted small">(last 200)</span></h2>
+    <% if (logs.length === 0) { %>
+      <p class="muted">No notifications sent yet.</p>
+    <% } else { %>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Site</th>
+          <th>Channel</th>
+          <th>Recipient</th>
+          <th>Result</th>
+          <th>Error</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% logs.forEach(l => { %>
+        <tr>
+          <td class="muted small" style="white-space:nowrap"><%= new Date(l.sent_at + 'Z').toLocaleString() %></td>
+          <td><%= l.site_name || ('Site #' + l.site_id) %></td>
+          <td><strong><%= l.channel %></strong></td>
+          <td class="muted small"><%= l.recipient || '—' %></td>
+          <td>
+            <% if (l.status === 'ok') { %>
+              <span class="meta-value ok">Sent</span>
+            <% } else { %>
+              <span class="meta-value down">Failed</span>
+            <% } %>
+          </td>
+          <td class="muted small" style="max-width:300px;word-break:break-all"><%= l.error_message || '—' %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+</main>
+</body>
+</html>

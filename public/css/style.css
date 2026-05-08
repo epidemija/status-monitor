@@ -370,6 +370,13 @@ body:has(.sidebar) { display: flex; align-items: stretch; min-height: 100vh; }
   font-family: ui-monospace, "SF Mono", monospace;
   font-size: 0.75rem; color: var(--accent); font-weight: 500;
 }
+.public-redirect-tag {
+  display: inline-block; margin-left: 6px;
+  padding: 1px 6px; border-radius: 4px;
+  font-size: 0.68rem; font-style: italic;
+  background: #fffdf0; color: #9a6700; border: 1px solid #f0e07a;
+  white-space: nowrap; vertical-align: middle;
+}
 .admin-redirect-tag {
   display: inline-block; margin-left: 5px;
   padding: 1px 6px; border-radius: 4px;

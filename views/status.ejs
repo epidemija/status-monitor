@@ -59,7 +59,12 @@
             <span class="dot dot-<%= last ? (last.is_up ? 'ok' : 'down') : 'muted' %>"></span>
             <div class="site-text">
               <span class="site-name"><span class="site-num"><%= String(groupIdx + 1).padStart(2, '0') %></span><%= site.name %></span>
-              <span class="site-url"><%= site.url %></span>
+              <span class="site-url">
+                <%= site.url %>
+                <% if (last && last.redirect_count > 0) { %>
+                  <span class="public-redirect-tag" title="<%= last.redirect_count %> redirect(s) · final URL: <%= last.final_url || '?' %>">redirect ×<%= last.redirect_count %></span>
+                <% } %>
+              </span>
             </div>
           </div>
           <div class="site-meta">

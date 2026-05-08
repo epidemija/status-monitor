@@ -517,6 +517,27 @@ router.post('/settings/test-teams', adminOnly, async (req, res) => {
   res.redirect('/admin/settings?flash=' + flash);
 });
 
+// --- Notification log ---
+router.get('/notification-log', (req, res) => {
+  const logs = db.prepare(`
+    SELECT nl.*, s.name AS site_name
+    FROM notification_log nl
+    LEFT JOIN sites s ON s.id = nl.site_id
+    ORDER BY nl.id DESC LIMIT 200
+  `).all();
+  // Compute cooldown status per site+channel so admin can see what's blocked
+  const cooldowns = db.prepare(`
+    SELECT site_id, channel, MAX(sent_at) AS last_ok_at
+    FROM notification_log WHERE status = 'ok'
+    GROUP BY site_id, channel
+  `).all().map(r => ({
+    ...r,
+    blocked: ((Date.now() - new Date(r.last_ok_at + 'Z').getTime()) / 60000) < (parseInt(process.env.ALERT_COOLDOWN_MINUTES || '60', 10)),
+    minutesAgo: Math.round((Date.now() - new Date(r.last_ok_at + 'Z').getTime()) / 60000),
+  }));
+  res.render('admin/notification-log', { logs, cooldowns, flash: req.query.flash || null });
+});
+
 // --- Account / Change password + email ---
 router.get('/account', (req, res) => {
   res.render('admin/account', { error: null, flash: req.query.flash || null });
