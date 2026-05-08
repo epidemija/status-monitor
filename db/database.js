@@ -170,7 +170,9 @@ const defaultSettings = {
   email_recipients: '',
   whatsapp_enabled: '0',
   whatsapp_recipients: '', // comma-separated, format: +491701234567
-  notify_on_report: '1',   // notify admin email when a bug report is filed
+  notify_on_report: '1',  // notify admin email when a bug report is filed
+  teams_enabled: '0',
+  teams_webhook_url: '',
 };
 
 const insertSetting = db.prepare(

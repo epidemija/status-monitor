@@ -434,6 +434,8 @@ router.post('/settings', (req, res) => {
     whatsapp_enabled: req.body.whatsapp_enabled === 'on' ? '1' : '0',
     whatsapp_recipients: (req.body.whatsapp_recipients || '').trim(),
     notify_on_report: req.body.notify_on_report === 'on' ? '1' : '0',
+    teams_enabled: req.body.teams_enabled === 'on' ? '1' : '0',
+    teams_webhook_url: (req.body.teams_webhook_url || '').trim(),
   };
 
   if (req.session.userRole === 'moderator') {
@@ -485,6 +487,25 @@ router.post('/settings/test-email', async (req, res) => {
 router.post('/settings/test-whatsapp', async (req, res) => {
   const r = await notifier.sendTestWhatsApp();
   const flash = r.ok ? 'Test+WhatsApp+sent' : ('WhatsApp+failed:+' + encodeURIComponent(r.error));
+  res.redirect('/admin/settings?flash=' + flash);
+});
+
+router.post('/settings/test-whatsapp-all', async (req, res) => {
+  const sites = db.prepare('SELECT * FROM sites WHERE enabled = 1 ORDER BY sort_order ASC, name ASC').all();
+  const lastCheck = db.prepare('SELECT * FROM checks WHERE site_id = ? ORDER BY id DESC LIMIT 1');
+  const summaries = sites.map(site => ({ site, last: lastCheck.get(site.id) }));
+  const r = await notifier.sendTestWhatsAppAll(summaries);
+  const flash = r.ok
+    ? encodeURIComponent('Test WhatsApp sent with all ' + sites.length + ' sites')
+    : r.skipped
+      ? encodeURIComponent('Skipped: ' + r.reason)
+      : encodeURIComponent('WhatsApp failed: ' + (r.error || ''));
+  res.redirect('/admin/settings?flash=' + flash);
+});
+
+router.post('/settings/test-teams', async (req, res) => {
+  const r = await notifier.sendTestTeams();
+  const flash = r.ok ? 'Test+Teams+message+sent' : ('Teams+failed:+' + encodeURIComponent(r.error || ''));
   res.redirect('/admin/settings?flash=' + flash);
 });
 

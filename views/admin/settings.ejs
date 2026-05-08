@@ -37,6 +37,20 @@
              value="<%= settings.whatsapp_recipients || '' %>" />
     </label>
 
+    <h2>Microsoft Teams</h2>
+    <p class="muted small">
+      Paste your Teams channel's Incoming Webhook URL below.
+      Create one in Teams: channel → ··· → Connectors → Incoming Webhook.
+    </p>
+    <label class="checkbox">
+      <input type="checkbox" name="teams_enabled" <%= settings.teams_enabled === '1' ? 'checked' : '' %> />
+      Send Microsoft Teams alerts
+    </label>
+    <label>Incoming Webhook URL
+      <input type="url" name="teams_webhook_url" placeholder="https://xxxxx.webhook.office.com/webhookb2/..."
+             value="<%= settings.teams_webhook_url || '' %>" />
+    </label>
+
     <h2>Bug reports</h2>
     <label class="checkbox">
       <input type="checkbox" name="notify_on_report" <%= (settings.notify_on_report === '1' || settings.notify_on_report === undefined) ? 'checked' : '' %> />
@@ -50,14 +64,25 @@
   </form>
 
   <div class="card">
-    <h2>Send a test message</h2>
-    <p class="muted small">Tests use your saved recipient list and credentials from <code>.env</code>.</p>
-    <form action="/admin/settings/test-email" method="post" style="display:inline">
-      <button class="btn btn-ghost" type="submit">Send test email</button>
-    </form>
-    <form action="/admin/settings/test-whatsapp" method="post" style="display:inline">
-      <button class="btn btn-ghost" type="submit">Send test WhatsApp</button>
-    </form>
+    <h2>Send test messages</h2>
+    <p class="muted small">
+      Generic tests use your saved recipient list and credentials from <code>.env</code>.<br>
+      The "all sites" WhatsApp test sends a real message listing every monitored site with its current status — clearly marked as a test.
+    </p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+      <form action="/admin/settings/test-email" method="post" style="display:inline">
+        <button class="btn btn-ghost" type="submit">Test email</button>
+      </form>
+      <form action="/admin/settings/test-whatsapp" method="post" style="display:inline">
+        <button class="btn btn-ghost" type="submit">Test WhatsApp</button>
+      </form>
+      <form action="/admin/settings/test-whatsapp-all" method="post" style="display:inline">
+        <button class="btn btn-ghost" type="submit">Test WhatsApp — all sites</button>
+      </form>
+      <form action="/admin/settings/test-teams" method="post" style="display:inline">
+        <button class="btn btn-ghost" type="submit">Test Teams</button>
+      </form>
+    </div>
   </div>
 </main>
 </body>
