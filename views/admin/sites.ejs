@@ -17,19 +17,17 @@
 
   <form id="bulk-delete-form" action="/admin/sites/bulk-delete" method="post" style="display:none"></form>
 
-  <table class="table" id="sites-table">
+  <table class="table sites-compact-table" id="sites-table">
     <thead>
       <tr>
-        <th style="width:28px"></th>
-        <th style="width:36px"><input type="checkbox" id="select-all" title="Select all"></th>
-        <th>Status</th>
-        <th>Name</th>
+        <th style="width:24px"></th>
+        <th style="width:32px"><input type="checkbox" id="select-all" title="Select all"></th>
+        <th style="width:130px">Status</th>
+        <th style="width:180px">Name</th>
         <th>URL</th>
-        <th>Enabled</th>
-        <th>Notify</th>
-        <th>Expected status</th>
-        <th>Keyword</th>
-        <th></th>
+        <th style="width:44px" title="Enabled">On</th>
+        <th style="width:44px" title="Notify on down">🔔</th>
+        <th style="width:120px"></th>
       </tr>
     </thead>
     <tbody id="sites-tbody">
@@ -42,26 +40,29 @@
               <span class="dot dot-<%= s.last.is_up ? 'ok' : 'down' %>" style="width:9px;height:9px;display:inline-block;vertical-align:middle;flex-shrink:0;"></span>
               <span style="vertical-align:middle"><%= s.last.is_up ? 'Up' : 'Down' %><% if (s.last.status_code) { %> <span class="muted small">· <%= s.last.status_code %></span><% } %></span>
               <% if (s.last.redirect_count > 0) { %>
-                <span class="admin-redirect-tag" title="Redirects to <%= s.last.final_url || '?' %>">redirect ×<%= s.last.redirect_count %></span>
+                <span class="admin-redirect-tag" title="Redirects to <%= s.last.final_url || '?' %>">↪ ×<%= s.last.redirect_count %></span>
               <% } %>
             <% } else { %>
-              <span class="muted small">No data</span>
+              <span class="muted small">—</span>
             <% } %>
           </td>
-          <td><strong><%= s.name %></strong></td>
-          <td><a href="<%= s.url %>" target="_blank" rel="noopener"><%= s.url %></a></td>
-          <td><%= s.enabled ? 'Yes' : 'No' %></td>
-          <td><%= s.notify_on_down ? 'Yes' : 'No' %></td>
-          <td><%= s.expected_status %></td>
-          <td><%= s.expected_keyword || '—' %></td>
-          <td class="actions">
+          <td class="sites-name-cell">
+            <strong><%= s.name %></strong>
+            <% if (s.expected_keyword) { %><span class="muted small" title="Keyword: <%= s.expected_keyword %>"> · kw</span><% } %>
+          </td>
+          <td class="sites-url-cell">
+            <a href="<%= s.url %>" target="_blank" rel="noopener" title="<%= s.url %>"><%= s.url %></a>
+          </td>
+          <td style="text-align:center"><%= s.enabled ? '✓' : '<span class="muted">✗</span>' %></td>
+          <td style="text-align:center"><%= s.notify_on_down ? '✓' : '<span class="muted">✗</span>' %></td>
+          <td class="actions" style="white-space:nowrap">
             <form action="/admin/sites/<%= s.id %>/check" method="post" style="display:inline">
-              <button class="btn btn-ghost" type="submit">Check now</button>
+              <button class="btn btn-ghost btn-sm" type="submit" title="Run check now">↻</button>
             </form>
-            <a class="btn btn-ghost" href="/admin/sites/<%= s.id %>/edit">Edit</a>
+            <a class="btn btn-ghost btn-sm" href="/admin/sites/<%= s.id %>/edit">Edit</a>
             <form action="/admin/sites/<%= s.id %>/delete" method="post" style="display:inline"
                   onsubmit="return confirm('Delete <%= s.name %>?')">
-              <button class="btn btn-danger" type="submit">Delete</button>
+              <button class="btn btn-danger btn-sm" type="submit">✕</button>
             </form>
           </td>
         </tr>

@@ -189,6 +189,13 @@ body:has(.sidebar) { display: flex; align-items: stretch; min-height: 100vh; }
 .btn-ghost:hover { background: #f3f4f6; }
 .btn-danger { background: #ffebe9; color: var(--down); border-color: #ffcecb; }
 .btn-danger:hover { background: #ffd1cc; }
+.btn-sm { padding: 3px 8px; font-size: 0.82rem; }
+
+/* Compact sites table */
+.sites-compact-table { table-layout: fixed; width: 100%; }
+.sites-url-cell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 0; }
+.sites-url-cell a { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sites-name-cell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Alerts */
 .alert { padding: 10px 14px; border-radius: 6px; margin: 12px 0; }
