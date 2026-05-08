@@ -245,6 +245,8 @@ body:has(.sidebar) { display: flex; align-items: stretch; min-height: 100vh; }
 }
 .variant-ok   { border-color: #b3e5be; color: var(--ok); }
 .variant-down { border-color: #ffcecb; color: var(--down); background: var(--down-bg); }
+.variant-warn { border-color: #f0e07a; color: var(--warn); background: #fffdf0; }
+.variant-redirect-tag { font-size: 0.68rem; opacity: 0.8; margin-left: 2px; font-style: italic; }
 
 /* Response time tiers */
 .rt-good { color: var(--ok); font-weight: 600; }

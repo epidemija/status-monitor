@@ -113,10 +113,21 @@
         <% if (siblings.length > 0) { %>
         <div class="site-variants">
           <span class="variants-label">Also monitored:</span>
-          <% siblings.forEach(v => { %>
-            <span class="variant-pill variant-<%= v.last ? (v.last.is_up ? 'ok' : 'down') : 'none' %>"
-                  title="<%= v.site.url %> — <%= v.last ? (v.last.is_up ? 'Up · ' + v.last.response_time_ms + 'ms' : 'Down') : 'No data' %>">
-              <span class="dot dot-<%= v.last ? (v.last.is_up ? 'ok' : 'down') : 'muted' %>" style="width:8px;height:8px;margin-right:3px;"></span><%= new URL(v.site.url).hostname.replace(/^www\./, '') %>
+          <% siblings.forEach(v => {
+            const vRedirect = v.last && v.last.is_up && v.last.redirect_count > 0;
+            const vCls     = v.last ? (v.last.is_up ? (vRedirect ? 'warn' : 'ok') : 'down') : 'none';
+            const vDotCls  = v.last ? (v.last.is_up ? (vRedirect ? 'warn' : 'ok') : 'down') : 'muted';
+            const vLabel   = v.last
+              ? (v.last.is_up
+                  ? (vRedirect
+                      ? `Redirects (${v.last.redirect_count}×) → ${v.last.final_url || '?'}`
+                      : `Up · ${v.last.response_time_ms != null ? v.last.response_time_ms + 'ms' : '—'}`)
+                  : 'Down')
+              : 'No data';
+          %>
+            <span class="variant-pill variant-<%= vCls %>"
+                  title="<%= v.site.url %> — <%= vLabel %>">
+              <span class="dot dot-<%= vDotCls %>" style="width:8px;height:8px;margin-right:3px;flex-shrink:0;"></span><%= new URL(v.site.url).hostname.replace(/^www\./, '') %><% if (vRedirect) { %> <span class="variant-redirect-tag">redirect</span><% } %>
             </span>
           <% }) %>
         </div>
