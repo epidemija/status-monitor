@@ -22,6 +22,7 @@
       <tr>
         <th style="width:28px"></th>
         <th style="width:36px"><input type="checkbox" id="select-all" title="Select all"></th>
+        <th>Status</th>
         <th>Name</th>
         <th>URL</th>
         <th>Enabled</th>
@@ -36,6 +37,17 @@
         <tr data-site-id="<%= s.id %>">
           <td><span class="drag-handle" title="Drag to reorder">⠿</span></td>
           <td><input type="checkbox" class="row-cb" value="<%= s.id %>"></td>
+          <td class="site-status-cell">
+            <% if (s.last) { %>
+              <span class="dot dot-<%= s.last.is_up ? 'ok' : 'down' %>" style="width:9px;height:9px;display:inline-block;vertical-align:middle;flex-shrink:0;"></span>
+              <span style="vertical-align:middle"><%= s.last.is_up ? 'Up' : 'Down' %><% if (s.last.status_code) { %> <span class="muted small">· <%= s.last.status_code %></span><% } %></span>
+              <% if (s.last.redirect_count > 0) { %>
+                <span class="admin-redirect-tag" title="Redirects to <%= s.last.final_url || '?' %>">redirect ×<%= s.last.redirect_count %></span>
+              <% } %>
+            <% } else { %>
+              <span class="muted small">No data</span>
+            <% } %>
+          </td>
           <td><strong><%= s.name %></strong></td>
           <td><a href="<%= s.url %>" target="_blank" rel="noopener"><%= s.url %></a></td>
           <td><%= s.enabled ? 'Yes' : 'No' %></td>

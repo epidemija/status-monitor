@@ -114,7 +114,11 @@ router.get('/status-codes', (req, res) => {
 // --- Sites list ---
 router.get('/sites', (req, res) => {
   const sites = db.prepare('SELECT * FROM sites ORDER BY sort_order ASC, name ASC').all();
-  res.render('admin/sites', { sites, flash: req.query.flash || null });
+  const lastCheckStmt = db.prepare(
+    'SELECT is_up, status_code, redirect_count, final_url FROM checks WHERE site_id = ? ORDER BY id DESC LIMIT 1'
+  );
+  const sitesWithStatus = sites.map(s => ({ ...s, last: lastCheckStmt.get(s.id) || null }));
+  res.render('admin/sites', { sites: sitesWithStatus, flash: req.query.flash || null });
 });
 
 // --- Bulk add sites ---

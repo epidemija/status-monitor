@@ -370,6 +370,14 @@ body:has(.sidebar) { display: flex; align-items: stretch; min-height: 100vh; }
   font-family: ui-monospace, "SF Mono", monospace;
   font-size: 0.75rem; color: var(--accent); font-weight: 500;
 }
+.admin-redirect-tag {
+  display: inline-block; margin-left: 5px;
+  padding: 1px 6px; border-radius: 4px;
+  font-size: 0.7rem; font-style: italic;
+  background: #fffdf0; color: #9a6700; border: 1px solid #f0e07a;
+  white-space: nowrap; vertical-align: middle;
+}
+.site-status-cell { white-space: nowrap; }
 
 /* Compact list of recent incidents inside the expanded detail panel */
 .mini-incidents { list-style: none; padding: 0; margin: 6px 0 0; }
