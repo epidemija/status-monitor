@@ -154,6 +154,16 @@ if (!columnExists('checks', 'initial_status_code')) {
   db.exec('ALTER TABLE checks ADD COLUMN initial_status_code INTEGER;');
   console.log('[db] Migrated checks: added column initial_status_code');
 }
+// `server_ip` and `server_header` capture the resolved IP and the HTTP Server
+// response header, displayed on the public status page per-site.
+if (!columnExists('checks', 'server_ip')) {
+  db.exec('ALTER TABLE checks ADD COLUMN server_ip TEXT;');
+  console.log('[db] Migrated checks: added column server_ip');
+}
+if (!columnExists('checks', 'server_header')) {
+  db.exec('ALTER TABLE checks ADD COLUMN server_header TEXT;');
+  console.log('[db] Migrated checks: added column server_header');
+}
 
 // `sort_order` drives the drag-and-drop position on the admin sites list
 // and the public status page. Initialised to the site's id so existing

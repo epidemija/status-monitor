@@ -324,6 +324,21 @@ router.get('/api/sites/:id/detail', (req, res) => {
   });
 });
 
+/* ------------------ Response time chart data ------------------ */
+
+router.get('/api/sites/:id/response-chart', (req, res) => {
+  const siteId = parseInt(req.params.id, 10);
+  const hours = Math.min(parseInt(req.query.hours || '24', 10), 168);
+  const rows = db.prepare(`
+    SELECT checked_at, response_time_ms, is_up
+    FROM checks
+    WHERE site_id = ? AND checked_at >= datetime('now', '-' || ? || ' hours')
+      AND response_time_ms IS NOT NULL
+    ORDER BY checked_at ASC
+  `).all(siteId, hours);
+  res.json(rows);
+});
+
 /* ------------------ Bug report (public form) ------------------ */
 
 router.get('/report', (req, res) => {

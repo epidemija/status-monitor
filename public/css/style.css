@@ -296,6 +296,21 @@ body:has(.sidebar) { display: flex; align-items: stretch; min-height: 100vh; }
 .detail-block h4 { margin: 0 0 6px; font-size: 0.95rem; }
 .detail-block p { margin: 0 0 8px; }
 .detail-block code { background: #eaeef2; padding: 1px 5px; border-radius: 3px; font-size: 0.85em; }
+.detail-block-full { grid-column: 1 / -1; }
+.rt-chart-wrap { height: 150px; margin-top: 10px; }
+
+/* Server info badges shown below site URL */
+.site-server-meta { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 2px; }
+.server-ip-badge {
+  font-size: 0.72rem; font-family: ui-monospace, "SF Mono", monospace;
+  color: var(--muted); background: var(--bg); border: 1px solid var(--border);
+  padding: 0 5px; border-radius: 3px; white-space: nowrap;
+}
+.server-sw-badge {
+  font-size: 0.72rem; color: var(--muted); background: var(--bg);
+  border: 1px solid var(--border); padding: 0 5px; border-radius: 3px;
+  white-space: nowrap;
+}
 .detail-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; justify-content: center; }
 
 /* Form rows of two */

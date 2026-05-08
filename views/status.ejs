@@ -65,6 +65,12 @@
                   <span class="public-redirect-tag" title="<%= last.redirect_count %> redirect(s) · final URL: <%= last.final_url || '?' %>">redirect ×<%= last.redirect_count %></span>
                 <% } %>
               </span>
+              <% if (last && (last.server_ip || last.server_header)) { %>
+              <span class="site-server-meta">
+                <% if (last.server_ip) { %><span class="server-ip-badge"><%= last.server_ip %></span><% } %>
+                <% if (last.server_header) { %><span class="server-sw-badge"><%= last.server_header.split(/[\/ ]/)[0] %></span><% } %>
+              </span>
+              <% } %>
             </div>
           </div>
           <div class="site-meta">
@@ -149,7 +155,7 @@
 
         <div id="detail-<%= site.id %>" class="site-detail" hidden>
           <div class="detail-grid">
-            <div class="detail-block">
+            <div class="detail-block detail-block-full">
               <h4>Response time (24h)</h4>
               <% if (rtStats && rtStats.samples > 0) { %>
                 <p>
@@ -162,6 +168,7 @@
               <% } else { %>
                 <p class="muted">No data yet.</p>
               <% } %>
+              <div class="rt-chart-wrap"><canvas id="rt-chart-<%= site.id %>"></canvas></div>
             </div>
             <div class="detail-block">
               <h4>HTTP responses (24h)</h4>
@@ -209,6 +216,13 @@
                 </p>
                 <% if (last.ssl_valid === 1) { %>
                   <p class="muted small">SSL: <%= last.ssl_issuer || 'unknown issuer' %> · expires <%= last.ssl_expires_at ? new Date(last.ssl_expires_at).toLocaleDateString() : '—' %></p>
+                <% } %>
+                <% if (last.server_ip || last.server_header) { %>
+                  <p class="muted small">
+                    <% if (last.server_ip) { %>IP <code><%= last.server_ip %></code><% } %>
+                    <% if (last.server_ip && last.server_header) { %> · <% } %>
+                    <% if (last.server_header) { %>Server <code><%= last.server_header %></code><% } %>
+                  </p>
                 <% } %>
               <% } else { %><p class="muted">No checks yet.</p><% } %>
             </div>
@@ -259,15 +273,73 @@
   </div>
 </footer>
 <script>
-  // Expandable rows
+  // Expandable rows + lazy response-time chart
+  async function ensureChartJs() {
+    if (window.Chart) return;
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  async function renderResponseChart(siteId) {
+    const canvas = document.getElementById('rt-chart-' + siteId);
+    if (!canvas || canvas.dataset.rendered) return;
+    canvas.dataset.rendered = '1';
+    try {
+      await ensureChartJs();
+      const data = await fetch('/api/sites/' + siteId + '/response-chart').then(r => r.json());
+      if (!data.length) { canvas.closest('.rt-chart-wrap').style.display = 'none'; return; }
+      new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: data.map(c => {
+            const d = new Date(c.checked_at + 'Z');
+            return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          }),
+          datasets: [{
+            data: data.map(c => c.response_time_ms),
+            borderColor: '#0969da',
+            backgroundColor: 'rgba(9,105,218,0.07)',
+            pointBackgroundColor: data.map(c => c.is_up ? '#2da44e' : '#cf222e'),
+            pointRadius: 3,
+            borderWidth: 1.5,
+            tension: 0.35,
+            fill: true,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => ctx.parsed.y + ' ms' } },
+          },
+          scales: {
+            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' },
+                 ticks: { callback: v => v + ' ms' } },
+            x: { ticks: { maxTicksLimit: 8, maxRotation: 0 }, grid: { display: false } },
+          },
+        },
+      });
+    } catch(e) { console.warn('Chart error', e); }
+  }
+
   document.querySelectorAll('.site-toggle').forEach((btn) => {
     btn.addEventListener('click', () => {
       const expanded = btn.getAttribute('aria-expanded') === 'true';
       btn.setAttribute('aria-expanded', String(!expanded));
       const target = document.getElementById(btn.getAttribute('aria-controls'));
       if (target) target.hidden = expanded;
+      if (!expanded) {
+        const siteId = btn.closest('[data-site-id]').dataset.siteId;
+        renderResponseChart(siteId);
+      }
     });
   });
+
   // Auto-refresh every 60 seconds.
   setTimeout(() => location.reload(), 60000);
 </script>
