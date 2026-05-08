@@ -65,22 +65,29 @@
 
   <div class="card">
     <h2>Send test messages</h2>
-    <p class="muted small">
-      Generic tests use your saved recipient list and credentials from <code>.env</code>.<br>
-      The "all sites" WhatsApp test sends a real message listing every monitored site with its current status — clearly marked as a test.
-    </p>
+    <% if (userRole !== 'admin') { %>
+      <p class="muted small" style="margin-bottom:12px">
+        <span style="color:var(--warn);font-weight:600">Admin only.</span>
+        Test messages can only be sent by admins.
+      </p>
+    <% } else { %>
+      <p class="muted small">
+        Generic tests use your saved recipient list and credentials from <code>.env</code>.<br>
+        The "all sites" WhatsApp test sends a real message listing every monitored site — clearly marked as a test.
+      </p>
+    <% } %>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
       <form action="/admin/settings/test-email" method="post" style="display:inline">
-        <button class="btn btn-ghost" type="submit">Test email</button>
+        <button class="btn btn-ghost" type="submit" <%= userRole !== 'admin' ? 'disabled style="opacity:0.45;cursor:not-allowed"' : '' %>>Test email</button>
       </form>
       <form action="/admin/settings/test-whatsapp" method="post" style="display:inline">
-        <button class="btn btn-ghost" type="submit">Test WhatsApp</button>
+        <button class="btn btn-ghost" type="submit" <%= userRole !== 'admin' ? 'disabled style="opacity:0.45;cursor:not-allowed"' : '' %>>Test WhatsApp</button>
       </form>
       <form action="/admin/settings/test-whatsapp-all" method="post" style="display:inline">
-        <button class="btn btn-ghost" type="submit">Test WhatsApp — all sites</button>
+        <button class="btn btn-ghost" type="submit" <%= userRole !== 'admin' ? 'disabled style="opacity:0.45;cursor:not-allowed"' : '' %>>Test WhatsApp — all sites</button>
       </form>
       <form action="/admin/settings/test-teams" method="post" style="display:inline">
-        <button class="btn btn-ghost" type="submit">Test Teams</button>
+        <button class="btn btn-ghost" type="submit" <%= userRole !== 'admin' ? 'disabled style="opacity:0.45;cursor:not-allowed"' : '' %>>Test Teams</button>
       </form>
     </div>
   </div>

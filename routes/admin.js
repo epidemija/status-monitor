@@ -478,19 +478,23 @@ router.post('/smtp-check', async (req, res) => {
   res.render('admin/smtp-check', { config: smtpConfig(), result, lastTo: to });
 });
 
-router.post('/settings/test-email', async (req, res) => {
+const adminOnly = (req, res, next) =>
+  req.session.userRole === 'admin' ? next()
+    : res.redirect('/admin/settings?flash=' + encodeURIComponent('Only admins can send test messages'));
+
+router.post('/settings/test-email', adminOnly, async (req, res) => {
   const r = await notifier.sendTestEmail();
   const flash = r.ok ? 'Test+email+sent' : ('Email+failed:+' + encodeURIComponent(r.error));
   res.redirect('/admin/settings?flash=' + flash);
 });
 
-router.post('/settings/test-whatsapp', async (req, res) => {
+router.post('/settings/test-whatsapp', adminOnly, async (req, res) => {
   const r = await notifier.sendTestWhatsApp();
   const flash = r.ok ? 'Test+WhatsApp+sent' : ('WhatsApp+failed:+' + encodeURIComponent(r.error));
   res.redirect('/admin/settings?flash=' + flash);
 });
 
-router.post('/settings/test-whatsapp-all', async (req, res) => {
+router.post('/settings/test-whatsapp-all', adminOnly, async (req, res) => {
   const sites = db.prepare('SELECT * FROM sites WHERE enabled = 1 ORDER BY sort_order ASC, name ASC').all();
   const lastCheck = db.prepare('SELECT * FROM checks WHERE site_id = ? ORDER BY id DESC LIMIT 1');
   const summaries = sites.map(site => ({ site, last: lastCheck.get(site.id) }));
@@ -503,7 +507,7 @@ router.post('/settings/test-whatsapp-all', async (req, res) => {
   res.redirect('/admin/settings?flash=' + flash);
 });
 
-router.post('/settings/test-teams', async (req, res) => {
+router.post('/settings/test-teams', adminOnly, async (req, res) => {
   const r = await notifier.sendTestTeams();
   const flash = r.ok ? 'Test+Teams+message+sent' : ('Teams+failed:+' + encodeURIComponent(r.error || ''));
   res.redirect('/admin/settings?flash=' + flash);
