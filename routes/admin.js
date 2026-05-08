@@ -498,18 +498,6 @@ router.post('/settings/test-whatsapp', adminOnly, async (req, res) => {
   res.redirect('/admin/settings?flash=' + flash);
 });
 
-router.post('/settings/test-whatsapp-all', adminOnly, async (req, res) => {
-  const sites = db.prepare('SELECT * FROM sites WHERE enabled = 1 ORDER BY sort_order ASC, name ASC').all();
-  const lastCheck = db.prepare('SELECT * FROM checks WHERE site_id = ? ORDER BY id DESC LIMIT 1');
-  const summaries = sites.map(site => ({ site, last: lastCheck.get(site.id) }));
-  const r = await notifier.sendTestWhatsAppAll(summaries);
-  const flash = r.ok
-    ? encodeURIComponent('Test WhatsApp sent with all ' + sites.length + ' sites')
-    : r.skipped
-      ? encodeURIComponent('Skipped: ' + r.reason)
-      : encodeURIComponent('WhatsApp failed: ' + (r.error || ''));
-  res.redirect('/admin/settings?flash=' + flash);
-});
 
 router.post('/settings/test-teams', adminOnly, async (req, res) => {
   const r = await notifier.sendTestTeams();

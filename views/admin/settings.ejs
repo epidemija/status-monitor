@@ -83,10 +83,7 @@
       <form action="/admin/settings/test-whatsapp" method="post" style="display:inline">
         <button class="btn btn-ghost" type="submit" <%= userRole !== 'admin' ? 'disabled style="opacity:0.45;cursor:not-allowed"' : '' %>>Test WhatsApp</button>
       </form>
-      <form action="/admin/settings/test-whatsapp-all" method="post" style="display:inline">
-        <button class="btn btn-ghost" type="submit" <%= userRole !== 'admin' ? 'disabled style="opacity:0.45;cursor:not-allowed"' : '' %>>Test WhatsApp — all sites</button>
-      </form>
-      <form action="/admin/settings/test-teams" method="post" style="display:inline">
+<form action="/admin/settings/test-teams" method="post" style="display:inline">
         <button class="btn btn-ghost" type="submit" <%= userRole !== 'admin' ? 'disabled style="opacity:0.45;cursor:not-allowed"' : '' %>>Test Teams</button>
       </form>
     </div>
