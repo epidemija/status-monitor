@@ -1,0 +1,89 @@
+<%- include('../partials/head', { title: 'Admin · Maintenance Windows' }) %>
+<%- include('../partials/admin-nav') %>
+<main class="container" style="max-width:860px">
+  <div class="page-header">
+    <h1>Maintenance Windows</h1>
+    <span class="muted small">Notifications are suppressed during active windows</span>
+  </div>
+  <% if (flash) { %><div class="alert alert-info"><%= decodeURIComponent(flash) %></div><% } %>
+  <% if (error) { %><div class="alert alert-danger"><%= error %></div><% } %>
+
+  <!-- Add form -->
+  <section class="card" style="margin-bottom:24px">
+    <h2 style="margin-bottom:12px">Schedule maintenance window</h2>
+    <form method="post" action="/admin/maintenance/new" class="form">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <label style="grid-column:1/-1">Title
+          <input type="text" name="title" required placeholder="e.g. Server upgrade" class="form-control" />
+        </label>
+        <label>Site
+          <select name="site_id" class="form-control">
+            <option value="">All sites</option>
+            <% sites.forEach(s => { %><option value="<%= s.id %>"><%= s.name %></option><% }) %>
+          </select>
+        </label>
+        <div></div>
+        <label>Start (local time)
+          <input type="datetime-local" name="starts_at" required class="form-control" />
+        </label>
+        <label>End (local time)
+          <input type="datetime-local" name="ends_at" required class="form-control" />
+        </label>
+      </div>
+      <div class="form-actions" style="margin-top:12px">
+        <button class="btn btn-primary" type="submit">Schedule</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Windows table -->
+  <% if (windows.length === 0) { %>
+    <p class="muted">No maintenance windows scheduled yet.</p>
+  <% } else { %>
+  <section class="card" style="padding:0;overflow-x:auto">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Title</th>
+          <th>Site</th>
+          <th>Starts</th>
+          <th>Ends</th>
+          <th>Created by</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% windows.forEach(w => {
+          const now = Date.now();
+          const start = new Date(w.starts_at + 'Z').getTime();
+          const end   = new Date(w.ends_at   + 'Z').getTime();
+          const isActive = now >= start && now <= end;
+          const isPast   = now > end;
+        %>
+        <tr>
+          <td>
+            <% if (isActive) { %><span class="meta-value warn">Active</span>
+            <% } else if (isPast) { %><span class="muted small">Past</span>
+            <% } else { %><span class="muted small">Upcoming</span><% } %>
+          </td>
+          <td><strong><%= w.title %></strong></td>
+          <td><%= w.site_name || '<span class="muted">All sites</span>' %></td>
+          <td class="muted small"><%= new Date(w.starts_at + 'Z').toLocaleString() %></td>
+          <td class="muted small"><%= new Date(w.ends_at   + 'Z').toLocaleString() %></td>
+          <td class="muted small"><%= w.created_by || '—' %></td>
+          <td>
+            <form method="post" action="/admin/maintenance/<%= w.id %>/delete"
+                  onsubmit="return confirm('Remove this maintenance window?')">
+              <button class="btn btn-danger btn-sm" type="submit">✕</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </section>
+  <% } %>
+</main>
+</body>
+</html>

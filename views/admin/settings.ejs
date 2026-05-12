@@ -51,6 +51,33 @@
              value="<%= settings.teams_webhook_url || '' %>" />
     </label>
 
+    <h2>Slack</h2>
+    <p class="muted small">
+      Create an <a href="https://api.slack.com/messaging/webhooks" target="_blank" rel="noopener">Incoming Webhook</a>
+      in your Slack workspace and paste the URL below.
+    </p>
+    <label class="checkbox">
+      <input type="checkbox" name="slack_enabled" <%= settings.slack_enabled === '1' ? 'checked' : '' %> />
+      Send Slack alerts
+    </label>
+    <label>Incoming Webhook URL
+      <input type="url" name="slack_webhook_url" placeholder="https://hooks.slack.com/services/..."
+             value="<%= settings.slack_webhook_url || '' %>" />
+    </label>
+
+    <h2>Discord</h2>
+    <p class="muted small">
+      In Discord: channel Settings → Integrations → Webhooks → New Webhook → Copy URL.
+    </p>
+    <label class="checkbox">
+      <input type="checkbox" name="discord_enabled" <%= settings.discord_enabled === '1' ? 'checked' : '' %> />
+      Send Discord alerts
+    </label>
+    <label>Webhook URL
+      <input type="url" name="discord_webhook_url" placeholder="https://discord.com/api/webhooks/..."
+             value="<%= settings.discord_webhook_url || '' %>" />
+    </label>
+
     <h2>Bug reports</h2>
     <label class="checkbox">
       <input type="checkbox" name="notify_on_report" <%= (settings.notify_on_report === '1' || settings.notify_on_report === undefined) ? 'checked' : '' %> />
@@ -85,6 +112,12 @@
       </form>
 <form action="/admin/settings/test-teams" method="post" style="display:inline">
         <button class="btn btn-ghost" type="submit" <%= userRole !== 'admin' ? 'disabled style="opacity:0.45;cursor:not-allowed"' : '' %>>Test Teams</button>
+      </form>
+      <form action="/admin/settings/test-slack" method="post" style="display:inline">
+        <button class="btn btn-ghost" type="submit" <%= userRole !== 'admin' ? 'disabled style="opacity:0.45;cursor:not-allowed"' : '' %>>Test Slack</button>
+      </form>
+      <form action="/admin/settings/test-discord" method="post" style="display:inline">
+        <button class="btn btn-ghost" type="submit" <%= userRole !== 'admin' ? 'disabled style="opacity:0.45;cursor:not-allowed"' : '' %>>Test Discord</button>
       </form>
     </div>
   </div>

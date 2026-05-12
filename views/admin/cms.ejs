@@ -199,5 +199,11 @@ document.querySelectorAll('.cms-plugin-toggle').forEach((btn) => {
   });
 });
 </script>
+<script>
+// Auto-refresh while any site is still scanning
+if (document.querySelector('.cms-spinning')) {
+  setTimeout(() => location.reload(), 5000);
+}
+</script>
 </body>
 </html>

@@ -215,6 +215,17 @@ CREATE TABLE IF NOT EXISTS cms_scans (
   error_message TEXT,
   FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS maintenance_windows (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  site_id INTEGER,
+  title TEXT NOT NULL,
+  starts_at DATETIME NOT NULL,
+  ends_at DATETIME NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  created_by TEXT,
+  FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+);
 `);
 
 // --- Defensive ALTER TABLE: add new columns to `sites` if they don't exist yet.
@@ -270,6 +281,10 @@ const defaultSettings = {
   notify_on_report: '1',  // notify admin email when a bug report is filed
   teams_enabled: '0',
   teams_webhook_url: '',
+  slack_enabled: '0',
+  slack_webhook_url: '',
+  discord_enabled: '0',
+  discord_webhook_url: '',
 };
 
 const insertSetting = db.prepare(

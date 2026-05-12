@@ -75,6 +75,19 @@
     </table>
   </section>
 
+  <% if (activeMaintenance && activeMaintenance.length > 0) { %>
+  <section class="card" style="margin-bottom:20px;border-left:4px solid var(--warn)">
+    <h2 style="color:var(--warn)">🔧 Active Maintenance</h2>
+    <% activeMaintenance.forEach(w => { %>
+      <div style="margin:4px 0">
+        <strong><%= w.title %></strong>
+        <span class="muted small"> — <%= w.site_name || 'All sites' %></span>
+        <span class="muted small"> — ends <%= new Date(w.ends_at + 'Z').toLocaleString() %></span>
+      </div>
+    <% }) %>
+  </section>
+  <% } %>
+
   <% if (sslSoon.length > 0) { %>
     <section class="card">
       <h2>SSL certificates expiring soon</h2>

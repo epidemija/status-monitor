@@ -1,0 +1,81 @@
+<%- include('../partials/head', { title: 'Admin · Uptime Stats' }) %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <div class="page-header">
+    <h1>Uptime Statistics</h1>
+    <span class="muted small">Based on scheduled checks from this server</span>
+  </div>
+  <% if (flash) { %><div class="alert alert-info"><%= decodeURIComponent(flash) %></div><% } %>
+
+  <section class="card" style="padding:0;overflow-x:auto">
+    <table class="table uptime-table">
+      <thead>
+        <tr>
+          <th>Site</th>
+          <th>Now</th>
+          <th style="min-width:90px">24 h</th>
+          <th style="min-width:90px">7 days</th>
+          <th style="min-width:90px">30 days</th>
+          <th style="min-width:90px">90 days</th>
+          <th>Avg RT (24h)</th>
+          <th>Avg RT (7d)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% data.forEach(s => {
+          function pct(stat) {
+            if (!stat || stat.total === 0) return null;
+            return Math.round(stat.up_count * 1000 / stat.total) / 10;
+          }
+          function pctClass(p) {
+            if (p === null) return 'uptime-none';
+            if (p >= 99) return 'uptime-ok';
+            if (p >= 95) return 'uptime-warn';
+            return 'uptime-down';
+          }
+          function rtLabel(ms) { return ms != null ? Math.round(ms) + ' ms' : '—'; }
+          const p1  = pct(s.d1);
+          const p7  = pct(s.d7);
+          const p30 = pct(s.d30);
+          const p90 = pct(s.d90);
+        %>
+        <tr>
+          <td>
+            <a href="<%= s.url %>" target="_blank" rel="noopener" class="uptime-name"><%= s.name %></a>
+            <div class="muted small uptime-url"><%= s.url %></div>
+          </td>
+          <td>
+            <% if (!s.last) { %>
+              <span class="muted">—</span>
+            <% } else if (s.last.is_up) { %>
+              <span class="dot dot-ok" style="width:9px;height:9px;display:inline-block;vertical-align:middle"></span>
+              <span class="ok" style="vertical-align:middle"> Up</span>
+            <% } else { %>
+              <span class="dot dot-down" style="width:9px;height:9px;display:inline-block;vertical-align:middle"></span>
+              <span class="down" style="vertical-align:middle"> Down</span>
+            <% } %>
+          </td>
+          <td class="uptime-cell <%= pctClass(p1) %>"><%= p1 !== null ? p1 + '%' : '—' %></td>
+          <td class="uptime-cell <%= pctClass(p7) %>"><%= p7 !== null ? p7 + '%' : '—' %></td>
+          <td class="uptime-cell <%= pctClass(p30) %>"><%= p30 !== null ? p30 + '%' : '—' %></td>
+          <td class="uptime-cell <%= pctClass(p90) %>"><%= p90 !== null ? p90 + '%' : '—' %></td>
+          <td class="muted small"><%= rtLabel(s.d1 && s.d1.avg_rt_ms) %></td>
+          <td class="muted small"><%= rtLabel(s.d7 && s.d7.avg_rt_ms) %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </section>
+</main>
+<style>
+.uptime-table   { font-size: 13px; }
+.uptime-name    { font-weight: 600; }
+.uptime-url     { margin-top: 2px; }
+.uptime-cell    { font-weight: 700; text-align: center; }
+.uptime-ok      { color: #16a34a; }
+.uptime-warn    { color: #ca8a04; }
+.uptime-down    { color: #dc2626; }
+.uptime-none    { color: #9ca3af; }
+</style>
+</body>
+</html>
