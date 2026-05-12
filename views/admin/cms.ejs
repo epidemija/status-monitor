@@ -1,0 +1,203 @@
+<%- include('../partials/head', { title: 'Admin · Tech Scan' }) %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <h1>Technology scanner</h1>
+  <p class="muted">
+    Fingerprints each monitored site: CMS, version, WordPress theme &amp; plugins,
+    web server, CDN, language, and third-party tools.
+    All analysis is done locally by fetching public pages — nothing is sent to external APIs.
+  </p>
+
+  <% if (flash) { %><div class="alert alert-info"><%= decodeURIComponent(flash) %></div><% } %>
+
+  <!-- Toolbar -->
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:20px">
+    <form method="post" action="/admin/cms/scan-all">
+      <button class="btn btn-secondary" type="submit"
+              onclick="this.textContent='Queued…';this.disabled=true">
+        Scan all sites
+      </button>
+    </form>
+    <span class="muted small">
+      Scanning runs in the background (~5–15 s per site).
+      Refresh the page to see updated results.
+    </span>
+    <% if (scanning > 0) { %>
+      <span class="meta-value warn"><%= scanning %> site<%= scanning !== 1 ? 's' : '' %> currently scanning…</span>
+    <% } %>
+  </div>
+
+  <!-- Summary cards -->
+  <section class="stat-row" style="margin-bottom:20px">
+    <div class="stat-card"><span class="stat-label">Sites scanned</span>
+      <span class="stat-value"><%= stats.scanned %> / <%= stats.total %></span></div>
+    <div class="stat-card"><span class="stat-label">WordPress</span>
+      <span class="stat-value <%= stats.wp > 0 ? 'ok' : '' %>"><%= stats.wp %></span></div>
+    <div class="stat-card"><span class="stat-label">Other CMS</span>
+      <span class="stat-value"><%= stats.other %></span></div>
+    <div class="stat-card"><span class="stat-label">Unknown / Static</span>
+      <span class="stat-value muted"><%= stats.unknown %></span></div>
+    <div class="stat-card"><span class="stat-label">Errors</span>
+      <span class="stat-value <%= stats.errors > 0 ? 'down' : '' %>"><%= stats.errors %></span></div>
+  </section>
+
+  <!-- Results table -->
+  <section class="card" style="padding:0;overflow-x:auto">
+    <table class="table cms-table">
+      <thead>
+        <tr>
+          <th>Site</th>
+          <th>CMS</th>
+          <th>Version</th>
+          <th>Theme</th>
+          <th>Plugins</th>
+          <th>Server</th>
+          <th>CDN</th>
+          <th>Language</th>
+          <th>Technologies</th>
+          <th>Scanned</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% rows.forEach((row, idx) => {
+          const plugins = (() => { try { return JSON.parse(row.plugins || '[]'); } catch(_){ return []; } })();
+          const techs   = (() => { try { return JSON.parse(row.technologies || '[]'); } catch(_){ return []; } })();
+          const isWp    = row.cms === 'WordPress';
+          const scannedAt = row.scanned_at ? new Date(row.scanned_at + 'Z') : null;
+          const neverScanned = !row.scan_status || row.scan_status === 'pending';
+        %>
+        <tr class="cms-row" data-idx="<%= idx %>">
+          <td>
+            <a href="<%= row.site_url %>" target="_blank" rel="noopener" class="cms-site-name">
+              <%= row.site_name %>
+            </a>
+            <div class="muted small cms-url"><%= row.site_url %></div>
+          </td>
+          <td>
+            <% if (neverScanned) { %>
+              <span class="muted">—</span>
+            <% } else if (row.scan_status === 'scanning') { %>
+              <span class="muted cms-spinning">Scanning…</span>
+            <% } else if (row.scan_status === 'error') { %>
+              <span class="down" title="<%= row.error_message || '' %>">Error</span>
+            <% } else if (row.cms) { %>
+              <span class="cms-badge cms-<%= row.cms.toLowerCase().replace(/[^a-z]/g,'') %>"><%= row.cms %></span>
+            <% } else { %>
+              <span class="muted">Unknown</span>
+            <% } %>
+          </td>
+          <td class="muted small"><%= row.cms_version || '—' %></td>
+          <td>
+            <% if (isWp && row.theme) { %>
+              <span class="cms-theme"><%= row.theme %></span>
+              <% if (row.theme_version) { %><span class="muted small"> v<%= row.theme_version %></span><% } %>
+            <% } else { %>—<% } %>
+          </td>
+          <td>
+            <% if (isWp && plugins.length > 0) { %>
+              <button class="btn btn-ghost btn-sm cms-plugin-toggle" data-idx="<%= idx %>">
+                <%= plugins.length %> plugin<%= plugins.length !== 1 ? 's' : '' %>
+              </button>
+            <% } else { %>—<% } %>
+          </td>
+          <td class="muted small"><%= row.server || '—' %></td>
+          <td>
+            <% if (row.cdn) { %>
+              <span class="cms-tag"><%= row.cdn %></span>
+            <% } else { %>—<% } %>
+          </td>
+          <td class="muted small"><%= row.language || '—' %></td>
+          <td>
+            <% if (techs.length > 0) { %>
+              <div class="cms-tech-list">
+                <% techs.slice(0, 3).forEach(t => { %><span class="cms-tag"><%= t %></span> <% }) %>
+                <% if (techs.length > 3) { %><span class="muted small">+<%= techs.length - 3 %> more</span><% } %>
+              </div>
+            <% } else { %>—<% } %>
+          </td>
+          <td class="muted small" style="white-space:nowrap">
+            <% if (scannedAt) { %>
+              <span title="<%= scannedAt.toISOString() %>"><%= scannedAt.toLocaleString() %></span>
+            <% } else { %>Never<% } %>
+          </td>
+          <td>
+            <form method="post" action="/admin/cms/scan/<%= row.site_id %>" style="margin:0">
+              <button class="btn btn-ghost btn-sm" type="submit"
+                      onclick="this.textContent='…';this.disabled=true">
+                Scan
+              </button>
+            </form>
+          </td>
+        </tr>
+        <!-- Plugin detail row (hidden by default) -->
+        <% if (isWp && plugins.length > 0) { %>
+        <tr class="cms-plugin-row" id="cms-plugins-<%= idx %>" hidden>
+          <td colspan="11" style="background:#f9fafb;padding:12px 20px">
+            <strong>Detected plugins (<%= plugins.length %>)</strong>
+            <span class="muted small"> — sourced from public HTML; may not be exhaustive</span>
+            <div class="cms-plugin-grid" style="margin-top:8px">
+              <% plugins.forEach(p => { %>
+                <span class="cms-plugin-chip"><%= p.name %></span>
+              <% }) %>
+            </div>
+          </td>
+        </tr>
+        <% } %>
+        <% }) %>
+      </tbody>
+    </table>
+  </section>
+
+  <p class="muted small" style="margin-top:12px">
+    Plugin detection reads references from the public HTML of the page — only plugins
+    that load assets on the front-end are visible. Server-side-only plugins will not appear.
+  </p>
+</main>
+
+<style>
+.cms-table        { font-size: 13px; }
+.cms-site-name    { font-weight: 600; }
+.cms-url          { margin-top: 2px; }
+.cms-theme        { font-style: italic; }
+.cms-tech-list    { display: flex; flex-wrap: wrap; gap: 4px; }
+.cms-tag          { display: inline-block; background: #e0e7ff; color: #3730a3;
+                    font-size: 11px; padding: 1px 7px; border-radius: 10px; white-space: nowrap; }
+.cms-badge        { display: inline-block; font-size: 12px; font-weight: 700;
+                    padding: 2px 8px; border-radius: 4px; }
+.cms-wordpress    { background: #e7f3ff; color: #1565c0; }
+.cms-joomla       { background: #fff3e0; color: #e65100; }
+.cms-drupal       { background: #e8f5e9; color: #2e7d32; }
+.cms-shopify      { background: #e8f5e9; color: #1b5e20; }
+.cms-typo         { background: #fce4ec; color: #880e4f; }
+.cms-magento      { background: #fff8e1; color: #f57f17; }
+.cms-wix          { background: #f3e5f5; color: #6a1b9a; }
+.cms-squarespace  { background: #fafafa; color: #212121; }
+.cms-webflow      { background: #e3f2fd; color: #0d47a1; }
+.cms-ghost        { background: #fce4ec; color: #ad1457; }
+.cms-hubspotcms   { background: #fff3e0; color: #bf360c; }
+
+.cms-plugin-grid  { display: flex; flex-wrap: wrap; gap: 6px; }
+.cms-plugin-chip  { background: #f3f4f6; color: #374151; font-size: 12px;
+                    padding: 2px 10px; border-radius: 12px; border: 1px solid #e5e7eb; }
+
+@keyframes spin { to { opacity: 0.3 } }
+.cms-spinning     { animation: spin 1s ease-in-out infinite alternate; }
+</style>
+
+<script>
+document.querySelectorAll('.cms-plugin-toggle').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const idx = btn.dataset.idx;
+    const row = document.getElementById('cms-plugins-' + idx);
+    if (!row) return;
+    const hidden = row.hidden;
+    row.hidden = !hidden;
+    btn.textContent = hidden
+      ? btn.textContent.replace('plugins', 'plugins (hide)')
+      : btn.textContent.replace(' (hide)', '');
+  });
+});
+</script>
+</body>
+</html>

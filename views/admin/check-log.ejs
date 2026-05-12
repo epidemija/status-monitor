@@ -1,0 +1,150 @@
+<%- include('../partials/head', { title: 'Admin · Check Log' }) %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <h1>Check log</h1>
+  <p class="muted">Every monitoring check recorded in the database — up and down.</p>
+
+  <form class="filter-bar" method="get" action="/admin/check-log">
+    <label>Site
+      <select name="site" onchange="this.form.submit()">
+        <option value="">All sites</option>
+        <% sites.forEach(s => { %>
+          <option value="<%= s.id %>" <%= siteId === s.id ? 'selected' : '' %>><%= s.name %></option>
+        <% }) %>
+      </select>
+    </label>
+    <label>Status
+      <select name="status" onchange="this.form.submit()">
+        <option value=""    <%= status === ''     ? 'selected' : '' %>>All</option>
+        <option value="up"  <%= status === 'up'   ? 'selected' : '' %>>Up</option>
+        <option value="down"<%= status === 'down' ? 'selected' : '' %>>Down / Error</option>
+      </select>
+    </label>
+    <label>Window
+      <select name="window" onchange="this.form.submit()">
+        <option value="1h"  <%= window === '1h'  ? 'selected' : '' %>>Last 1 hour</option>
+        <option value="6h"  <%= window === '6h'  ? 'selected' : '' %>>Last 6 hours</option>
+        <option value="24h" <%= window === '24h' ? 'selected' : '' %>>Last 24 hours</option>
+        <option value="7d"  <%= window === '7d'  ? 'selected' : '' %>>Last 7 days</option>
+      </select>
+    </label>
+    <label>Rows
+      <select name="limit" onchange="this.form.submit()">
+        <option value="100"  <%= limit === 100  ? 'selected' : '' %>>100</option>
+        <option value="250"  <%= limit === 250  ? 'selected' : '' %>>250</option>
+        <option value="500"  <%= limit === 500  ? 'selected' : '' %>>500</option>
+        <option value="1000" <%= limit === 1000 ? 'selected' : '' %>>1000</option>
+      </select>
+    </label>
+    <noscript><button class="btn btn-ghost" type="submit">Apply</button></noscript>
+    <% if (siteId || status || window !== '24h') { %>
+      <a class="btn btn-ghost" href="/admin/check-log">Clear filters</a>
+    <% } %>
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;margin-left:auto">
+      <input type="checkbox" id="auto-refresh" style="cursor:pointer"> Auto-refresh (15s)
+    </label>
+  </form>
+
+  <section class="card" style="padding:0;overflow-x:auto">
+    <% if (checks.length === 0) { %>
+      <p class="muted" style="padding:16px">No checks match the current filters.</p>
+    <% } else { %>
+    <table class="table cl-table">
+      <thead>
+        <tr>
+          <th style="white-space:nowrap">Time</th>
+          <th>Site</th>
+          <th>Status</th>
+          <th>HTTP</th>
+          <th style="white-space:nowrap">Response time</th>
+          <th>SSL</th>
+          <th>Redirects</th>
+          <th>Server IP</th>
+          <th>Server</th>
+          <th>Error</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% checks.forEach(c => {
+          const ts = new Date(c.checked_at + 'Z');
+          const rtTier = c.response_time_ms == null ? 'unknown'
+            : c.response_time_ms >= 2500 ? 'crit'
+            : c.response_time_ms >= 800  ? 'warn'
+            : 'good';
+          const sslLabel = c.ssl_valid === 1 ? 'Valid'
+            : c.ssl_valid === 0 ? 'Invalid'
+            : '—';
+          const sslCls = c.ssl_valid === 1 ? 'ok' : c.ssl_valid === 0 ? 'down' : '';
+          const httpChanged = c.initial_status_code && c.initial_status_code !== c.status_code;
+        %>
+        <tr class="<%= c.is_up ? '' : 'cl-row-down' %>">
+          <td class="muted small cl-ts" title="<%= ts.toISOString() %>"><%= ts.toLocaleString() %></td>
+          <td class="cl-site">
+            <a href="<%= c.site_url %>" target="_blank" rel="noopener"><%= c.site_name %></a>
+          </td>
+          <td>
+            <span class="<%= c.is_up ? 'ok' : 'down' %>"><%= c.is_up ? 'Up' : 'Down' %></span>
+          </td>
+          <td>
+            <% if (c.status_code) { %>
+              <% if (httpChanged) { %>
+                <span class="muted small"><%= c.initial_status_code %></span>
+                <span class="muted small"> &rarr; </span>
+              <% } %>
+              <strong><%= c.status_code %></strong>
+            <% } else { %>—<% } %>
+          </td>
+          <td>
+            <% if (c.response_time_ms != null) { %>
+              <span class="rt-<%= rtTier %>"><%= c.response_time_ms %> ms</span>
+            <% } else { %>—<% } %>
+          </td>
+          <td>
+            <% if (c.ssl_valid !== null) { %>
+              <span class="<%= sslCls %>">
+                <%= sslLabel %>
+                <% if (c.ssl_valid === 1 && c.ssl_days_remaining != null) { %>
+                  (<%= c.ssl_days_remaining %>d)
+                <% } %>
+              </span>
+            <% } else { %>—<% } %>
+          </td>
+          <td>
+            <% if (c.redirect_count) { %>
+              <%= c.redirect_count %><% if (c.final_url && c.final_url !== c.site_url) { %>
+                <span class="muted small"> &rarr; <abbr title="<%= c.final_url %>"><%= new URL(c.final_url).hostname %></abbr></span>
+              <% } %>
+            <% } else { %>—<% } %>
+          </td>
+          <td class="muted small cl-ip"><%= c.server_ip || '—' %></td>
+          <td class="muted small"><%= c.server_header || '—' %></td>
+          <td class="cl-error muted small"><%= c.error_message || '—' %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <p class="muted small" style="padding:8px 16px">
+      Showing <%= checks.length %> check<%= checks.length !== 1 ? 's' : '' %> (newest first).
+    </p>
+    <% } %>
+  </section>
+</main>
+
+<style>
+.cl-table { font-size: 12.5px; }
+.cl-ts    { min-width: 160px; }
+.cl-site  { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-ip    { font-family: monospace; }
+.cl-error { max-width: 260px; word-break: break-word; }
+.cl-row-down { background: rgba(220,38,38,0.04); }
+</style>
+
+<script>
+let _t = null;
+document.getElementById('auto-refresh').addEventListener('change', function () {
+  if (this.checked) { _t = setInterval(() => location.reload(), 15000); }
+  else { clearInterval(_t); }
+});
+</script>
+</body>
+</html>

@@ -3,6 +3,7 @@ const express = require('express');
 const db = require('../db/database');
 const monitor = require('../lib/monitor');
 const notifier = require('../lib/notifier');
+const { trackVisit, updateBrowser } = require('../middleware/visitor-tracker');
 
 const router = express.Router();
 
@@ -209,7 +210,33 @@ function groupSummaries(summaries) {
 
 /* ------------------ Public status page ------------------ */
 
-router.get('/', (req, res) => {
+// Receive browser-collected metrics and attach them to the visitor record.
+router.post('/api/visitor-data', (req, res) => {
+  const id = parseInt(req.body.visitorId, 10);
+  if (!id) return res.json({ ok: false });
+  try {
+    updateBrowser.run(
+      parseInt(req.body.screenWidth)  || null,
+      parseInt(req.body.screenHeight) || null,
+      parseInt(req.body.windowWidth)  || null,
+      parseInt(req.body.windowHeight) || null,
+      req.body.timezone        || null,
+      parseInt(req.body.colorDepth)   || null,
+      parseInt(req.body.hardwareConcurrency) || null,
+      parseFloat(req.body.deviceMemory)      || null,
+      parseInt(req.body.touchPoints)  || null,
+      req.body.connectionType  || null,
+      req.body.platform        || null,
+      req.body.cookiesEnabled === 'true' ? 1 : 0,
+      req.body.doNotTrack      || null,
+      parseInt(req.body.historyLength) || null,
+      id
+    );
+  } catch (_) {}
+  res.json({ ok: true });
+});
+
+router.get('/', trackVisit, (req, res) => {
   const win = ['24h', '30d', '1y'].includes(req.query.window) ? req.query.window : '24h';
   const summaries = getSiteSummaries(win);
   const groups = groupSummaries(summaries);

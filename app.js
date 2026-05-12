@@ -1,6 +1,9 @@
 // Status Monitor - main entry point
 require('dotenv').config();
 
+// Logger must be required before any other module so console patches apply everywhere.
+const { requestLogger } = require('./lib/logger');
+
 const path = require('path');
 const fs = require('fs');
 const express = require('express');
@@ -31,6 +34,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
+app.use(requestLogger);
 
 app.use(session({
   store: new SqliteStore({

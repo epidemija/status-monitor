@@ -1,0 +1,198 @@
+<%- include('../partials/head', { title: 'Admin · Visitors' }) %>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="" />
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <h1>Visitors</h1>
+  <p class="muted">Every visit to the public status page. IP geolocation via ip-api.com. Admin eyes only.</p>
+
+  <% if (flash) { %><div class="alert alert-info"><%= decodeURIComponent(flash) %></div><% } %>
+
+  <!-- Stats row -->
+  <section class="stat-row" style="margin-bottom:20px">
+    <div class="stat-card"><span class="stat-label">Visits today</span><span class="stat-value"><%= stats.today %></span></div>
+    <div class="stat-card"><span class="stat-label">Unique IPs today</span><span class="stat-value"><%= stats.uniqueIpsToday %></span></div>
+    <div class="stat-card"><span class="stat-label">Visits this week</span><span class="stat-value"><%= stats.week %></span></div>
+    <div class="stat-card"><span class="stat-label">Countries seen</span><span class="stat-value"><%= stats.countries %></span></div>
+    <div class="stat-card"><span class="stat-label">VPN / Proxy</span><span class="stat-value <%= stats.vpn > 0 ? 'warn' : '' %>"><%= stats.vpn %></span></div>
+  </section>
+
+  <!-- Map -->
+  <section class="card" style="padding:0;margin-bottom:20px">
+    <div id="visitor-map" style="height:460px;border-radius:6px;z-index:0"></div>
+  </section>
+
+  <!-- Filter bar -->
+  <form class="filter-bar" method="get" action="/admin/visitors">
+    <label>Window
+      <select name="window" onchange="this.form.submit()">
+        <option value="24h"  <%= window === '24h'  ? 'selected' : '' %>>Last 24 hours</option>
+        <option value="7d"   <%= window === '7d'   ? 'selected' : '' %>>Last 7 days</option>
+        <option value="30d"  <%= window === '30d'  ? 'selected' : '' %>>Last 30 days</option>
+        <option value="all"  <%= window === 'all'  ? 'selected' : '' %>>All time</option>
+      </select>
+    </label>
+    <label>VPN/Proxy
+      <select name="vpn" onchange="this.form.submit()">
+        <option value=""    <%= vpnFilter === ''    ? 'selected' : '' %>>All</option>
+        <option value="yes" <%= vpnFilter === 'yes' ? 'selected' : '' %>>VPN/Proxy only</option>
+        <option value="no"  <%= vpnFilter === 'no'  ? 'selected' : '' %>>Non-VPN only</option>
+      </select>
+    </label>
+    <label>Country
+      <input type="text" name="country" value="<%= countryFilter %>" placeholder="e.g. Germany" style="width:130px" />
+    </label>
+    <button class="btn btn-ghost" type="submit">Apply</button>
+    <% if (window !== '7d' || vpnFilter || countryFilter) { %>
+      <a class="btn btn-ghost" href="/admin/visitors">Clear</a>
+    <% } %>
+  </form>
+
+  <!-- Visitors table -->
+  <section class="card" style="padding:0;overflow-x:auto">
+    <% if (visitors.length === 0) { %>
+      <p class="muted" style="padding:16px">No visitors match the current filters.</p>
+    <% } else { %>
+    <table class="table vis-table">
+      <thead>
+        <tr>
+          <th style="white-space:nowrap">Time</th>
+          <th>IP</th>
+          <th>Location</th>
+          <th>ISP / Org</th>
+          <th>VPN / Proxy</th>
+          <th>Browser</th>
+          <th>OS</th>
+          <th>Screen</th>
+          <th>Device</th>
+          <th>Lang</th>
+          <th>Timezone</th>
+          <th>Referrer</th>
+          <th>Page</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% visitors.forEach(v => {
+          const ts = new Date(v.visited_at + 'Z');
+          const parsed = parseUA(v.user_agent);
+          const isVpn = v.is_proxy || v.is_hosting;
+          const isMobile = v.is_mobile || (v.touch_points > 0 && v.window_width < 800);
+          const screenLabel = v.screen_width ? `${v.screen_width}×${v.screen_height}` : '—';
+          const ref = v.referrer ? (() => { try { return new URL(v.referrer).hostname; } catch(_) { return v.referrer.slice(0,40); } })() : '—';
+          const tzLabel = v.timezone_js || v.timezone || '—';
+        %>
+        <tr class="<%= isVpn ? 'vis-row-vpn' : '' %>">
+          <td class="muted small vis-ts" title="<%= ts.toISOString() %>"><%= ts.toLocaleString() %></td>
+          <td class="vis-ip"><%= v.ip || '—' %></td>
+          <td class="vis-loc">
+            <% if (v.city || v.country) { %>
+              <%= [v.city, v.country].filter(Boolean).join(', ') %>
+            <% } else { %><span class="muted">Unknown</span><% } %>
+          </td>
+          <td class="vis-isp muted small" title="<%= v.as_info || '' %>"><%= (v.org || v.isp || '—').slice(0,30) %></td>
+          <td>
+            <% if (isVpn) { %>
+              <span class="meta-value warn">
+                <%= v.is_proxy ? 'Proxy/VPN' : 'Hosting IP' %>
+              </span>
+            <% } else { %>
+              <span class="muted">—</span>
+            <% } %>
+          </td>
+          <td class="muted small"><%= parsed.browser %></td>
+          <td class="muted small"><%= parsed.os %></td>
+          <td class="muted small"><%= screenLabel %></td>
+          <td class="muted small"><%= isMobile ? 'Mobile' : 'Desktop' %></td>
+          <td class="muted small" title="<%= v.accept_language || '' %>"><%= v.accept_language ? v.accept_language.slice(0,10) : '—' %></td>
+          <td class="muted small"><%= tzLabel %></td>
+          <td class="muted small vis-ref" title="<%= v.referrer || '' %>"><%= ref %></td>
+          <td class="muted small"><%= v.page || '/' %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <p class="muted small" style="padding:8px 16px">
+      Showing <%= visitors.length %> visit<%= visitors.length !== 1 ? 's' : '' %> (newest first).
+    </p>
+    <% } %>
+  </section>
+</main>
+
+<style>
+.vis-table   { font-size: 12px; }
+.vis-ts      { min-width: 140px; white-space: nowrap; }
+.vis-ip      { font-family: monospace; white-space: nowrap; }
+.vis-loc     { white-space: nowrap; }
+.vis-isp     { max-width: 160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.vis-ref     { max-width: 120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.vis-row-vpn { background: rgba(245,158,11,0.07); }
+</style>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
+<script>
+<%
+function parseUA(ua) {
+  if (!ua) return { browser: '—', os: '—' };
+  let browser = 'Other';
+  if (/Edg\//.test(ua))                              browser = 'Edge';
+  else if (/OPR\/|Opera/.test(ua))                   browser = 'Opera';
+  else if (/Chrome\//.test(ua))                      browser = 'Chrome';
+  else if (/Firefox\//.test(ua))                     browser = 'Firefox';
+  else if (/Safari\//.test(ua) && !/Chrome/.test(ua))browser = 'Safari';
+  else if (/MSIE|Trident/.test(ua))                  browser = 'IE';
+  const bv = ua.match(/(?:Edg|OPR|Chrome|Firefox|Version)[\/ ](\d+)/i);
+  if (bv) browser += ' ' + bv[1];
+  let os = 'Unknown';
+  if (/Windows NT 10/.test(ua))     os = 'Windows 10/11';
+  else if (/Windows NT 6\.3/.test(ua)) os = 'Windows 8.1';
+  else if (/Windows NT 6\.1/.test(ua)) os = 'Windows 7';
+  else if (/Windows/.test(ua))      os = 'Windows';
+  else if (/iPhone/.test(ua))       os = 'iPhone';
+  else if (/iPad/.test(ua))         os = 'iPad';
+  else if (/Android/.test(ua))      os = 'Android';
+  else if (/Mac OS X/.test(ua))     os = 'macOS';
+  else if (/Linux/.test(ua))        os = 'Linux';
+  return { browser, os };
+}
+%>
+
+const mapPoints = <%- JSON.stringify(mapPoints) %>;
+
+const map = L.map('visitor-map', { scrollWheelZoom: false }).setView([30, 15], 2);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  maxZoom: 18,
+}).addTo(map);
+
+const clusters = L.markerClusterGroup({ maxClusterRadius: 40 });
+
+for (const p of mapPoints) {
+  const marker = L.circleMarker([p.lat, p.lon], {
+    radius: Math.min(5 + p.count, 14),
+    fillColor: p.isVpn ? '#f59e0b' : '#3b82f6',
+    color: '#fff',
+    weight: 1,
+    fillOpacity: 0.8,
+  });
+  marker.bindPopup(
+    `<strong>${p.city || '?'}, ${p.country || '?'}</strong><br>` +
+    `Visits: ${p.count}<br>` +
+    `ISP: ${p.isp || '—'}<br>` +
+    (p.isVpn ? '<span style="color:#d97706">VPN / Proxy detected</span><br>' : '') +
+    `<span style="color:#6b7280;font-size:11px">${p.lat.toFixed(3)}, ${p.lon.toFixed(3)}</span>`
+  );
+  clusters.addLayer(marker);
+}
+map.addLayer(clusters);
+
+if (mapPoints.length > 0) {
+  try {
+    const bounds = L.latLngBounds(mapPoints.map(p => [p.lat, p.lon]));
+    map.fitBounds(bounds, { padding: [30, 30], maxZoom: 8 });
+  } catch(_) {}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<%- include('../partials/head', { title: 'Admin · Login Log' }) %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <h1>Login log</h1>
+  <p class="muted">All admin and moderator sign-ins. Visible to admins only.</p>
+
+  <form class="filter-bar" method="get" action="/admin/login-log">
+    <label>Role
+      <select name="role" onchange="this.form.submit()">
+        <option value=""          <%= roleFilter === ''          ? 'selected' : '' %>>All roles</option>
+        <option value="admin"     <%= roleFilter === 'admin'     ? 'selected' : '' %>>Admin</option>
+        <option value="moderator" <%= roleFilter === 'moderator' ? 'selected' : '' %>>Moderator</option>
+      </select>
+    </label>
+    <label>Window
+      <select name="window" onchange="this.form.submit()">
+        <option value="7d"  <%= window === '7d'  ? 'selected' : '' %>>Last 7 days</option>
+        <option value="30d" <%= window === '30d' ? 'selected' : '' %>>Last 30 days</option>
+        <option value="all" <%= window === 'all' ? 'selected' : '' %>>All time</option>
+      </select>
+    </label>
+    <noscript><button class="btn btn-ghost" type="submit">Apply</button></noscript>
+  </form>
+
+  <section class="card" style="padding:0;overflow-x:auto">
+    <% if (logins.length === 0) { %>
+      <p class="muted" style="padding:16px">No logins recorded yet.</p>
+    <% } else { %>
+    <table class="table" style="font-size:13px">
+      <thead>
+        <tr>
+          <th style="white-space:nowrap">Time</th>
+          <th>User</th>
+          <th>Role</th>
+          <th>IP address</th>
+          <th>Browser / OS</th>
+          <th>User-Agent</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% logins.forEach(l => {
+          const ts = new Date(l.logged_in_at + 'Z');
+          const ua = l.user_agent || '';
+          let browser = 'Other';
+          if (/Edg\//.test(ua))                               browser = 'Edge';
+          else if (/OPR\/|Opera/.test(ua))                    browser = 'Opera';
+          else if (/Chrome\//.test(ua))                       browser = 'Chrome';
+          else if (/Firefox\//.test(ua))                      browser = 'Firefox';
+          else if (/Safari\//.test(ua) && !/Chrome/.test(ua)) browser = 'Safari';
+          const bv = ua.match(/(?:Edg|OPR|Chrome|Firefox|Version)[\/ ](\d+)/i);
+          let os = '';
+          if (/Windows NT 10/.test(ua))         os = 'Windows 10/11';
+          else if (/Windows NT 6\.1/.test(ua))  os = 'Windows 7';
+          else if (/Windows/.test(ua))          os = 'Windows';
+          else if (/iPhone/.test(ua))           os = 'iPhone';
+          else if (/Android/.test(ua))          os = 'Android';
+          else if (/Mac OS X/.test(ua))         os = 'macOS';
+          else if (/Linux/.test(ua))            os = 'Linux';
+          const browserLabel = bv ? `${browser} ${bv[1]}` : browser;
+        %>
+        <tr>
+          <td class="muted small" style="white-space:nowrap" title="<%= ts.toISOString() %>">
+            <%= ts.toLocaleString() %>
+          </td>
+          <td><strong><%= l.user_email %></strong></td>
+          <td>
+            <span class="<%= l.user_role === 'admin' ? 'ok' : 'muted' %>">
+              <%= l.user_role %>
+            </span>
+          </td>
+          <td style="font-family:monospace;font-size:12px"><%= l.ip || '—' %></td>
+          <td class="muted small">
+            <%= browserLabel %><% if (os) { %> / <%= os %><% } %>
+          </td>
+          <td class="muted small" style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+              title="<%= ua %>">
+            <%= ua.slice(0, 80) %><%= ua.length > 80 ? '…' : '' %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <p class="muted small" style="padding:8px 16px">
+      Showing <%= logins.length %> login<%= logins.length !== 1 ? 's' : '' %> (newest first).
+    </p>
+    <% } %>
+  </section>
+</main>
+</body>
+</html>

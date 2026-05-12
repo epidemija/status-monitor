@@ -1,10 +1,14 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
+const fs = require('fs');
 const db = require('../db/database');
+const { LOG_PATH } = require('../lib/logger');
 const { requireLogin, requireAdmin } = require('../middleware/auth');
 const monitor = require('../lib/monitor');
 const notifier = require('../lib/notifier');
+const { runGeoSweep, LOCATIONS } = require('../lib/geo');
+const { scanAndFormat }          = require('../lib/cms');
 const { statusCodeTier, statusCodeLabel } = require('./public');
 
 const router = express.Router();
@@ -119,6 +123,130 @@ router.get('/sites', (req, res) => {
   );
   const sitesWithStatus = sites.map(s => ({ ...s, last: lastCheckStmt.get(s.id) || null }));
   res.render('admin/sites', { sites: sitesWithStatus, flash: req.query.flash || null });
+});
+
+// --- Export sites as JSON ---
+router.get('/sites/export', (req, res) => {
+  const sites = db.prepare('SELECT * FROM sites ORDER BY sort_order ASC, name ASC').all();
+  const byId = new Map(sites.map((s) => [s.id, s]));
+
+  const payload = {
+    exported_at: new Date().toISOString(),
+    app: 'status-monitor',
+    version: 1,
+    count: sites.length,
+    sites: sites.map((s) => ({
+      name:                   s.name,
+      url:                    s.url,
+      enabled:                Boolean(s.enabled),
+      expected_status:        s.expected_status  || 200,
+      expected_keyword:       s.expected_keyword  || null,
+      notify_on_down:         Boolean(s.notify_on_down),
+      response_time_warn_ms:  s.response_time_warn_ms  || 800,
+      response_time_crit_ms:  s.response_time_crit_ms  || 2500,
+      ssl_warn_days:          s.ssl_warn_days     || 30,
+      sort_order:             s.sort_order        ?? null,
+      parent_url:             s.parent_id ? (byId.get(s.parent_id)?.url ?? null) : null,
+    })),
+  };
+
+  const filename = `sites-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.send(JSON.stringify(payload, null, 2));
+});
+
+// --- Import sites from JSON ---
+router.get('/sites/import', requireAdmin, (req, res) => {
+  res.render('admin/site-import', { error: null });
+});
+
+router.post('/sites/import', requireAdmin, (req, res) => {
+  const raw  = (req.body.json || '').trim();
+  const mode = req.body.mode === 'update' ? 'update' : 'skip';
+
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch (e) {
+    return res.render('admin/site-import', { error: `Invalid JSON: ${e.message}` });
+  }
+  if (!data || !Array.isArray(data.sites)) {
+    return res.render('admin/site-import', { error: 'Invalid format — expected a JSON object with a "sites" array.' });
+  }
+
+  // Build a URL → id map for all current sites so we can detect duplicates
+  // and resolve parent_url references.
+  const urlToId = new Map(
+    db.prepare('SELECT id, url FROM sites').all().map((s) => [s.url, s.id])
+  );
+  const importedUrlToId = new Map(); // tracks IDs of sites touched in this import
+
+  const insertSite = db.prepare(`
+    INSERT INTO sites
+      (name, url, enabled, expected_status, expected_keyword, notify_on_down,
+       response_time_warn_ms, response_time_crit_ms, ssl_warn_days, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const updateSite = db.prepare(`
+    UPDATE sites SET
+      name = ?, enabled = ?, expected_status = ?, expected_keyword = ?,
+      notify_on_down = ?, response_time_warn_ms = ?, response_time_crit_ms = ?,
+      ssl_warn_days = ?
+    WHERE id = ?
+  `);
+
+  let added = 0, updated = 0, skipped = 0, errored = 0;
+
+  // First pass — insert / update without parent_id (resolved in second pass).
+  for (const s of data.sites) {
+    if (!s.url || !s.name) { errored++; continue; }
+    try { new URL(s.url); } catch (_) { errored++; continue; }
+
+    const existingId = urlToId.get(s.url);
+    const enabled  = s.enabled  !== false ? 1 : 0;
+    const notify   = s.notify_on_down !== false ? 1 : 0;
+    const expSt    = parseInt(s.expected_status)    || 200;
+    const warnMs   = parseInt(s.response_time_warn_ms) || 800;
+    const critMs   = parseInt(s.response_time_crit_ms) || 2500;
+    const sslDays  = parseInt(s.ssl_warn_days)       || 30;
+    const keyword  = s.expected_keyword || null;
+    const order    = s.sort_order != null ? parseInt(s.sort_order) : null;
+
+    if (existingId) {
+      if (mode === 'update') {
+        updateSite.run(s.name, enabled, expSt, keyword, notify, warnMs, critMs, sslDays, existingId);
+        importedUrlToId.set(s.url, existingId);
+        updated++;
+      } else {
+        importedUrlToId.set(s.url, existingId);
+        skipped++;
+      }
+    } else {
+      const { lastInsertRowid } = insertSite.run(
+        s.name, s.url, enabled, expSt, keyword, notify, warnMs, critMs, sslDays, order
+      );
+      importedUrlToId.set(s.url, lastInsertRowid);
+      urlToId.set(s.url, lastInsertRowid);
+      added++;
+    }
+  }
+
+  // Second pass — wire up parent_url → parent_id.
+  for (const s of data.sites) {
+    if (!s.parent_url || !s.url) continue;
+    const childId  = importedUrlToId.get(s.url);
+    const parentId = importedUrlToId.get(s.parent_url) ?? urlToId.get(s.parent_url);
+    if (childId && parentId && childId !== parentId) {
+      db.prepare('UPDATE sites SET parent_id = ? WHERE id = ?').run(parentId, childId);
+    }
+  }
+
+  const parts = [`${added} added`];
+  if (updated) parts.push(`${updated} updated`);
+  if (skipped) parts.push(`${skipped} skipped (already exist)`);
+  if (errored) parts.push(`${errored} invalid (skipped)`);
+  res.redirect('/admin/sites?flash=' + encodeURIComponent('Import complete: ' + parts.join(', ')));
 });
 
 // --- Bulk add sites ---
@@ -731,6 +859,286 @@ router.post('/pending/:id/reject', requireAdmin, (req, res) => {
     .run('rejected', note, action.id);
   notifier.sendActionResultNotification(action.user_email, action.description, false, note).catch(() => {});
   res.redirect('/admin/pending?flash=Action+rejected');
+});
+
+// --- Detailed check log ---
+router.get('/check-log', (req, res) => {
+  const limit   = Math.min(parseInt(req.query.limit  || '250', 10), 1000);
+  const siteId  = req.query.site   ? parseInt(req.query.site, 10) : null;
+  const status  = ['up', 'down'].includes(req.query.status) ? req.query.status : '';
+  const window  = ['1h', '6h', '24h', '7d'].includes(req.query.window) ? req.query.window : '24h';
+
+  const windowMap = { '1h': '-1 hour', '6h': '-6 hours', '24h': '-1 day', '7d': '-7 days' };
+  const winSql = windowMap[window];
+
+  const where  = [`c.checked_at >= datetime('now', '${winSql}')`];
+  const params = [];
+  if (siteId)        { where.push('c.site_id = ?'); params.push(siteId); }
+  if (status === 'up')   where.push('c.is_up = 1');
+  if (status === 'down') where.push('c.is_up = 0');
+
+  const checks = db.prepare(`
+    SELECT c.*, s.name AS site_name, s.url AS site_url
+    FROM checks c JOIN sites s ON s.id = c.site_id
+    WHERE ${where.join(' AND ')}
+    ORDER BY c.id DESC
+    LIMIT ?
+  `).all(...params, limit);
+
+  const sites = db.prepare('SELECT id, name FROM sites ORDER BY name').all();
+  res.render('admin/check-log', { checks, sites, limit, siteId, status, window });
+});
+
+// --- Geographic response times ---
+router.get('/geo', (req, res) => {
+  const sites = db.prepare(
+    'SELECT * FROM sites WHERE enabled = 1 AND parent_id IS NULL ORDER BY sort_order ASC, name ASC'
+  ).all();
+
+  // Latest geo check per (site, location)
+  const latestRows = db.prepare(`
+    SELECT g.*
+    FROM geo_checks g
+    WHERE g.id IN (
+      SELECT MAX(id) FROM geo_checks GROUP BY site_id, location_key
+    )
+  `).all();
+
+  // 24h average per (site, location)
+  const avgRows = db.prepare(`
+    SELECT site_id, location_key,
+           AVG(response_time_ms) AS avg_ms,
+           COUNT(*) AS samples
+    FROM geo_checks
+    WHERE checked_at >= datetime('now', '-1 day') AND response_time_ms IS NOT NULL
+    GROUP BY site_id, location_key
+  `).all();
+
+  // Build lookup maps keyed by siteId -> locationKey -> data
+  const latestByKey = {};
+  for (const r of latestRows) {
+    if (!latestByKey[r.site_id]) latestByKey[r.site_id] = {};
+    latestByKey[r.site_id][r.location_key] = r;
+  }
+  const avgByKey = {};
+  for (const r of avgRows) {
+    if (!avgByKey[r.site_id]) avgByKey[r.site_id] = {};
+    avgByKey[r.site_id][r.location_key] = r;
+  }
+
+  const lastSweepRow = db.prepare(
+    'SELECT MAX(checked_at) AS ts FROM geo_checks'
+  ).get();
+  const lastSweepAt = lastSweepRow?.ts || null;
+
+  res.render('admin/geo', {
+    sites, locations: LOCATIONS,
+    latestByKey, avgByKey, lastSweepAt,
+    flash: req.query.flash || null,
+  });
+});
+
+router.post('/geo/run', requireAdmin, (req, res) => {
+  // Fire-and-forget; the sweep takes ~15 s per site so we redirect immediately.
+  runGeoSweep().catch((err) => console.error('[geo] Manual sweep error:', err));
+  res.redirect('/admin/geo?flash=' + encodeURIComponent('Geo sweep started — results will appear in ~1–2 minutes'));
+});
+
+// --- Technology / CMS scanner ---
+const cmsUpsert = db.prepare(`
+  INSERT INTO cms_scans
+    (site_id, scanned_at, cms, cms_version, theme, theme_version,
+     plugins, technologies, server, powered_by, generator, cdn, language,
+     scan_status, error_message)
+  VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(site_id) DO UPDATE SET
+    scanned_at    = excluded.scanned_at,
+    cms           = excluded.cms,
+    cms_version   = excluded.cms_version,
+    theme         = excluded.theme,
+    theme_version = excluded.theme_version,
+    plugins       = excluded.plugins,
+    technologies  = excluded.technologies,
+    server        = excluded.server,
+    powered_by    = excluded.powered_by,
+    generator     = excluded.generator,
+    cdn           = excluded.cdn,
+    language      = excluded.language,
+    scan_status   = excluded.scan_status,
+    error_message = excluded.error_message
+`);
+
+function saveCmsScan(r) {
+  cmsUpsert.run(
+    r.site_id, r.cms, r.cms_version, r.theme, r.theme_version,
+    r.plugins, r.technologies, r.server, r.powered_by, r.generator,
+    r.cdn, r.language, r.scan_status, r.error_message
+  );
+}
+
+router.get('/cms', (req, res) => {
+  const sites = db.prepare('SELECT * FROM sites ORDER BY sort_order ASC, name ASC').all();
+  const scans = db.prepare('SELECT * FROM cms_scans').all();
+  const scanMap = new Map(scans.map((s) => [s.site_id, s]));
+
+  const rows = sites.map((s) => {
+    const scan = scanMap.get(s.id) || {};
+    return { site_id: s.id, site_name: s.name, site_url: s.url, ...scan };
+  });
+
+  const stats = {
+    total:   sites.length,
+    scanned: scans.filter((s) => s.scan_status === 'ok' || s.scan_status === 'error').length,
+    wp:      scans.filter((s) => s.cms === 'WordPress').length,
+    other:   scans.filter((s) => s.cms && s.cms !== 'WordPress').length,
+    unknown: scans.filter((s) => s.scan_status === 'ok' && !s.cms).length,
+    errors:  scans.filter((s) => s.scan_status === 'error').length,
+  };
+
+  const scanning = scans.filter((s) => s.scan_status === 'scanning').length;
+
+  res.render('admin/cms', { rows, stats, scanning, flash: req.query.flash || null });
+});
+
+router.post('/cms/scan/:id', async (req, res) => {
+  const site = db.prepare('SELECT * FROM sites WHERE id = ?').get(req.params.id);
+  if (!site) return res.redirect('/admin/cms?flash=' + encodeURIComponent('Site not found'));
+
+  // Mark as scanning immediately so the UI shows feedback.
+  cmsUpsert.run(
+    site.id, null, null, null, null, '[]', '[]', null, null, null, null, null, 'scanning', null
+  );
+
+  // Fire-and-forget.
+  (async () => {
+    try {
+      const result = await scanAndFormat(site);
+      saveCmsScan(result);
+      console.log(`[cms] Scanned ${site.name}: ${result.cms || 'unknown'}`);
+    } catch (err) {
+      console.error(`[cms] Scan error for ${site.name}: ${err.message}`);
+      cmsUpsert.run(site.id, null, null, null, null, '[]', '[]', null, null, null, null, null, 'error', err.message);
+    }
+  })();
+
+  res.redirect('/admin/cms?flash=' + encodeURIComponent(`Scanning ${site.name}… refresh in a few seconds`));
+});
+
+router.post('/cms/scan-all', async (req, res) => {
+  const sites = db.prepare('SELECT * FROM sites WHERE enabled = 1 AND parent_id IS NULL').all();
+
+  // Mark all as scanning.
+  for (const s of sites) {
+    cmsUpsert.run(s.id, null, null, null, null, '[]', '[]', null, null, null, null, null, 'scanning', null);
+  }
+
+  // Scan sequentially in the background (avoids hammering targets in parallel).
+  (async () => {
+    for (const site of sites) {
+      try {
+        const result = await scanAndFormat(site);
+        saveCmsScan(result);
+        console.log(`[cms] Scanned ${site.name}: ${result.cms || 'unknown'}`);
+      } catch (err) {
+        console.error(`[cms] Scan error for ${site.name}: ${err.message}`);
+        cmsUpsert.run(site.id, null, null, null, null, '[]', '[]', null, null, null, null, null, 'error', err.message);
+      }
+    }
+    console.log('[cms] Scan-all complete');
+  })();
+
+  res.redirect('/admin/cms?flash=' + encodeURIComponent(`Scanning ${sites.length} sites in the background — refresh to see results`));
+});
+
+// --- Visitors (admin only) ---
+router.get('/visitors', requireAdmin, (req, res) => {
+  const windowMap = { '24h': '-1 day', '7d': '-7 days', '30d': '-30 days', all: null };
+  const win = windowMap[req.query.window] !== undefined ? req.query.window : '7d';
+  const winSql = windowMap[win];
+  const vpnFilter = ['yes', 'no'].includes(req.query.vpn) ? req.query.vpn : '';
+  const countryFilter = (req.query.country || '').trim();
+
+  const where = [];
+  const params = [];
+  if (winSql)              { where.push(`visited_at >= datetime('now', '${winSql}')`); }
+  if (vpnFilter === 'yes') { where.push('(is_proxy = 1 OR is_hosting = 1)'); }
+  if (vpnFilter === 'no')  { where.push('is_proxy = 0 AND is_hosting = 0'); }
+  if (countryFilter)       { where.push('country LIKE ?'); params.push(`%${countryFilter}%`); }
+
+  const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
+
+  const visitors = db.prepare(
+    `SELECT * FROM visitors ${whereClause} ORDER BY id DESC LIMIT 500`
+  ).all(...params);
+
+  // Stats (always today / this week regardless of filter)
+  const stats = {
+    today:        db.prepare("SELECT COUNT(*) AS c FROM visitors WHERE visited_at >= datetime('now','-1 day')").get().c,
+    uniqueIpsToday: db.prepare("SELECT COUNT(DISTINCT ip) AS c FROM visitors WHERE visited_at >= datetime('now','-1 day')").get().c,
+    week:         db.prepare("SELECT COUNT(*) AS c FROM visitors WHERE visited_at >= datetime('now','-7 days')").get().c,
+    countries:    db.prepare("SELECT COUNT(DISTINCT country_code) AS c FROM visitors WHERE country_code IS NOT NULL").get().c,
+    vpn:          db.prepare("SELECT COUNT(*) AS c FROM visitors WHERE (is_proxy=1 OR is_hosting=1) AND visited_at >= datetime('now','-7 days')").get().c,
+  };
+
+  // Build map points: group by rounded lat/lon, keep first city/country/isp per group.
+  const mapWhere = winSql ? `WHERE lat IS NOT NULL AND lon IS NOT NULL AND visited_at >= datetime('now','${winSql}')` : 'WHERE lat IS NOT NULL AND lon IS NOT NULL';
+  const geoRows = db.prepare(`SELECT lat, lon, city, country, isp, org, is_proxy, is_hosting FROM visitors ${mapWhere}`).all();
+  const grouped = new Map();
+  for (const r of geoRows) {
+    const key = `${r.lat.toFixed(2)},${r.lon.toFixed(2)}`;
+    if (!grouped.has(key)) {
+      grouped.set(key, { lat: r.lat, lon: r.lon, city: r.city, country: r.country, isp: r.isp || r.org, isVpn: false, count: 0 });
+    }
+    const g = grouped.get(key);
+    g.count++;
+    if (r.is_proxy || r.is_hosting) g.isVpn = true;
+  }
+  const mapPoints = Array.from(grouped.values());
+
+  res.render('admin/visitors', {
+    visitors, stats, mapPoints,
+    window: win, vpnFilter, countryFilter,
+    flash: req.query.flash || null,
+  });
+});
+
+// --- Login log (admin only) ---
+router.get('/login-log', requireAdmin, (req, res) => {
+  const windowMap = { '7d': '-7 days', '30d': '-30 days', all: null };
+  const win = windowMap[req.query.window] !== undefined ? req.query.window : '7d';
+  const winSql = windowMap[win];
+  const roleFilter = ['admin', 'moderator'].includes(req.query.role) ? req.query.role : '';
+
+  const where = [];
+  const params = [];
+  if (winSql)    { where.push(`logged_in_at >= datetime('now', '${winSql}')`); }
+  if (roleFilter){ where.push('user_role = ?'); params.push(roleFilter); }
+  const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
+
+  const logins = db.prepare(
+    `SELECT * FROM user_logins ${whereClause} ORDER BY id DESC LIMIT 500`
+  ).all(...params);
+
+  res.render('admin/login-log', { logins, window: win, roleFilter });
+});
+
+// --- App logs ---
+router.get('/logs', requireAdmin, (req, res) => {
+  const limit = Math.min(parseInt(req.query.lines || '500', 10), 2000);
+  const filter = (req.query.filter || '').toUpperCase(); // INFO | WARN | ERROR | HTTP | ''
+  let lines = [];
+  try {
+    const raw = fs.readFileSync(LOG_PATH, 'utf8');
+    const all = raw.trim().split('\n');
+    const filtered = filter ? all.filter((l) => l.includes(`[${filter}]`)) : all;
+    lines = filtered.slice(-limit).reverse();
+  } catch (_) {}
+  res.render('admin/logs', { lines, limit, filter: req.query.filter || '', flash: req.query.flash });
+});
+
+router.post('/logs/clear', requireAdmin, (req, res) => {
+  try { fs.writeFileSync(LOG_PATH, ''); } catch (_) {}
+  res.redirect('/admin/logs?flash=Log+cleared');
 });
 
 module.exports = router;

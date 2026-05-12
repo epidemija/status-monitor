@@ -1,0 +1,176 @@
+<%- include('../partials/head', { title: 'Admin · Geo Checks' }) %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <h1>Geographic response times</h1>
+  <p class="muted">
+    Response times from global probe locations via
+    <a href="https://check-host.net" target="_blank" rel="noopener">check-host.net</a>.
+    Checks run automatically every hour and can be triggered manually below.
+    The server's own direct response time remains on the main status page.
+  </p>
+
+  <% if (flash) { %><div class="alert alert-info"><%= decodeURIComponent(flash) %></div><% } %>
+
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+    <% if (lastSweepAt) { %>
+      <span class="muted small">Last geo sweep: <strong><%= new Date(lastSweepAt + 'Z').toLocaleString() %></strong></span>
+    <% } else { %>
+      <span class="muted small">No geo checks recorded yet.</span>
+    <% } %>
+    <form method="post" action="/admin/geo/run" style="margin:0">
+      <button class="btn btn-secondary btn-sm" type="submit"
+              onclick="this.textContent='Running…';this.disabled=true">
+        Run geo check now
+      </button>
+    </form>
+    <span class="muted small">Note: each sweep takes ~15 s per site (probes need time to respond).</span>
+  </div>
+
+  <% if (sites.length === 0) { %>
+    <p class="muted">No enabled sites to check.</p>
+  <% } else { %>
+
+  <% sites.forEach(site => { %>
+  <section class="card" style="margin-bottom:24px;overflow-x:auto">
+    <h2 style="margin-bottom:12px">
+      <a href="<%= site.url %>" target="_blank" rel="noopener"><%= site.name %></a>
+      <span class="muted small" style="font-weight:normal"><%= site.url %></span>
+    </h2>
+    <table class="table geo-table">
+      <thead>
+        <tr>
+          <th>Location</th>
+          <th>Status</th>
+          <th>Response time</th>
+          <th>HTTP</th>
+          <th>Avg 24h</th>
+          <th>Last checked</th>
+          <th>Note</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% locations.forEach(loc => {
+          const latest  = (latestByKey[site.id] || {})[loc.key];
+          const avg24h  = (avgByKey[site.id]    || {})[loc.key];
+          const rtMs    = latest ? latest.response_time_ms : null;
+          const tier    = rtMs == null ? 'none'
+            : rtMs < 600   ? 'fast'
+            : rtMs < 1500  ? 'ok'
+            : rtMs < 3000  ? 'slow'
+            : 'dead';
+        %>
+        <tr>
+          <td><strong><%= loc.label %></strong></td>
+          <td>
+            <% if (!latest) { %>
+              <span class="muted">—</span>
+            <% } else if (latest.is_up) { %>
+              <span class="ok">Up</span>
+            <% } else { %>
+              <span class="down">Down</span>
+            <% } %>
+          </td>
+          <td>
+            <% if (rtMs != null) { %>
+              <span class="geo-rt geo-<%= tier %>"><%= rtMs %> ms</span>
+            <% } else { %>
+              <span class="muted">—</span>
+            <% } %>
+          </td>
+          <td>
+            <% if (latest && latest.status_code) { %>
+              <%= latest.status_code %>
+            <% } else { %>—<% } %>
+          </td>
+          <td>
+            <% if (avg24h && avg24h.samples > 0) { %>
+              <span class="muted small"><%= Math.round(avg24h.avg_ms) %> ms
+                <span class="muted" style="font-size:10px">(<%= avg24h.samples %> checks)</span>
+              </span>
+            <% } else { %>—<% } %>
+          </td>
+          <td class="muted small">
+            <% if (latest) { %>
+              <%= new Date(latest.checked_at + 'Z').toLocaleString() %>
+            <% } else { %>—<% } %>
+          </td>
+          <td class="muted small geo-error">
+            <%= (latest && latest.error_message) ? latest.error_message : '—' %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </section>
+  <% }) %>
+
+  <div class="card" style="margin-bottom:24px;overflow-x:auto">
+    <h2 style="margin-bottom:12px">Response time heatmap <span class="muted small">(latest check per location)</span></h2>
+    <table class="table geo-heat-table">
+      <thead>
+        <tr>
+          <th>Site</th>
+          <% locations.forEach(loc => { %><th class="geo-heat-loc"><%= loc.label %></th><% }) %>
+        </tr>
+      </thead>
+      <tbody>
+        <% sites.forEach(site => { %>
+        <tr>
+          <td><strong><%= site.name %></strong></td>
+          <% locations.forEach(loc => {
+            const d    = (latestByKey[site.id] || {})[loc.key];
+            const rtMs = d ? d.response_time_ms : null;
+            const tier = !d       ? 'none'
+              : !d.is_up          ? 'dead'
+              : rtMs == null      ? 'none'
+              : rtMs < 600        ? 'fast'
+              : rtMs < 1500       ? 'ok'
+              : rtMs < 3000       ? 'slow'
+              : 'dead';
+            const label = !d ? '—' : !d.is_up ? 'Down' : rtMs != null ? rtMs + ' ms' : '—';
+          %>
+          <td class="geo-cell geo-cell-<%= tier %>" title="<%= loc.label %>: <%= label %>">
+            <%= label %>
+          </td>
+          <% }) %>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <div class="geo-legend">
+      <span class="geo-cell geo-cell-fast">Under 600 ms</span>
+      <span class="geo-cell geo-cell-ok">600–1500 ms</span>
+      <span class="geo-cell geo-cell-slow">1500–3000 ms</span>
+      <span class="geo-cell geo-cell-dead">Over 3000 ms / Down</span>
+      <span class="geo-cell geo-cell-none">No data</span>
+    </div>
+  </div>
+
+  <% } %>
+</main>
+
+<style>
+.geo-table { font-size: 13px; }
+.geo-error { max-width: 220px; word-break: break-word; }
+
+.geo-rt            { font-weight: 600; }
+.geo-fast          { color: #16a34a; }
+.geo-ok            { color: #ca8a04; }
+.geo-slow          { color: #ea580c; }
+.geo-dead          { color: #dc2626; }
+
+/* Heatmap */
+.geo-heat-table    { font-size: 12px; border-collapse: collapse; }
+.geo-heat-loc      { max-width: 80px; white-space: normal; word-break: break-word; font-size: 11px; }
+.geo-cell          { text-align: center; padding: 6px 8px; font-size: 12px; font-weight: 600; }
+.geo-cell-fast     { background: #dcfce7; color: #166534; }
+.geo-cell-ok       { background: #fef9c3; color: #854d0e; }
+.geo-cell-slow     { background: #ffedd5; color: #9a3412; }
+.geo-cell-dead     { background: #fee2e2; color: #991b1b; }
+.geo-cell-none     { background: #f3f4f6; color: #6b7280; }
+
+.geo-legend        { display: flex; gap: 8px; flex-wrap: wrap; padding: 12px 16px; font-size: 12px; }
+.geo-legend .geo-cell { border-radius: 4px; padding: 3px 10px; }
+</style>
+</body>
+</html>

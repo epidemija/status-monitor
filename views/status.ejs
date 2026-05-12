@@ -343,5 +343,34 @@
   // Auto-refresh every 60 seconds.
   setTimeout(() => location.reload(), 60000);
 </script>
+<% if (typeof visitorId !== 'undefined' && visitorId) { %>
+<script>
+(function() {
+  const nav = navigator;
+  const conn = nav.connection || nav.mozConnection || nav.webkitConnection;
+  fetch('/api/visitor-data', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      visitorId: <%= visitorId %>,
+      screenWidth: screen.width,
+      screenHeight: screen.height,
+      windowWidth: window.innerWidth,
+      windowHeight: window.innerHeight,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      colorDepth: screen.colorDepth,
+      hardwareConcurrency: nav.hardwareConcurrency || null,
+      deviceMemory: nav.deviceMemory || null,
+      touchPoints: nav.maxTouchPoints || 0,
+      connectionType: conn ? (conn.effectiveType || conn.type || null) : null,
+      platform: nav.platform || null,
+      cookiesEnabled: String(nav.cookieEnabled),
+      doNotTrack: nav.doNotTrack || null,
+      historyLength: history.length
+    })
+  }).catch(function(){});
+})();
+</script>
+<% } %>
 </body>
 </html>

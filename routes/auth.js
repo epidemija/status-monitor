@@ -21,6 +21,18 @@ router.post('/login', (req, res) => {
   req.session.userId = user.id;
   req.session.userEmail = user.email;
   req.session.userRole = user.role;
+
+  // Record the login for the admin audit log.
+  try {
+    db.prepare(
+      'INSERT INTO user_logins (user_id, user_email, user_role, ip, user_agent) VALUES (?, ?, ?, ?, ?)'
+    ).run(
+      user.id, user.email, user.role,
+      req.ip || req.socket?.remoteAddress || null,
+      (req.headers['user-agent'] || '').slice(0, 500)
+    );
+  } catch (_) {}
+
   res.redirect('/admin');
 });
 

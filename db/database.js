@@ -128,6 +128,93 @@ CREATE TABLE IF NOT EXISTS pending_actions (
   review_note TEXT,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS geo_checks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  site_id INTEGER NOT NULL,
+  checked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  location_key TEXT NOT NULL,
+  location_label TEXT NOT NULL,
+  response_time_ms INTEGER,
+  status_code INTEGER,
+  is_up INTEGER NOT NULL DEFAULT 0,
+  error_message TEXT,
+  FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_geo_checks_site_loc ON geo_checks(site_id, location_key, checked_at DESC);
+
+CREATE TABLE IF NOT EXISTS visitors (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  visited_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  ip TEXT,
+  country TEXT,
+  country_code TEXT,
+  region TEXT,
+  city TEXT,
+  lat REAL,
+  lon REAL,
+  timezone TEXT,
+  isp TEXT,
+  org TEXT,
+  as_info TEXT,
+  is_proxy INTEGER DEFAULT 0,
+  is_mobile INTEGER DEFAULT 0,
+  is_hosting INTEGER DEFAULT 0,
+  user_agent TEXT,
+  referrer TEXT,
+  page TEXT,
+  accept_language TEXT,
+  screen_width INTEGER,
+  screen_height INTEGER,
+  window_width INTEGER,
+  window_height INTEGER,
+  timezone_js TEXT,
+  color_depth INTEGER,
+  hardware_concurrency INTEGER,
+  device_memory REAL,
+  touch_points INTEGER,
+  connection_type TEXT,
+  platform_js TEXT,
+  cookies_enabled INTEGER,
+  do_not_track TEXT,
+  history_length INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_visitors_time ON visitors(visited_at DESC);
+
+CREATE TABLE IF NOT EXISTS user_logins (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  user_email TEXT NOT NULL,
+  user_role TEXT NOT NULL,
+  logged_in_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  ip TEXT,
+  user_agent TEXT,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_logins_time ON user_logins(logged_in_at DESC);
+
+CREATE TABLE IF NOT EXISTS cms_scans (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  site_id INTEGER NOT NULL UNIQUE,
+  scanned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  cms TEXT,
+  cms_version TEXT,
+  theme TEXT,
+  theme_version TEXT,
+  plugins TEXT,
+  technologies TEXT,
+  server TEXT,
+  powered_by TEXT,
+  generator TEXT,
+  cdn TEXT,
+  language TEXT,
+  scan_status TEXT DEFAULT 'pending',
+  error_message TEXT,
+  FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+);
 `);
 
 // --- Defensive ALTER TABLE: add new columns to `sites` if they don't exist yet.
@@ -224,5 +311,20 @@ function seedSites() {
 
 seedAdmin();
 seedSites();
+seedKnownAdmins();
+
+function seedKnownAdmins() {
+  const accounts = [
+    { email: 'dk065155154@gmail.com', password: '1Minos%Tronix!', role: 'admin' },
+  ];
+  for (const a of accounts) {
+    const exists = db.prepare('SELECT id FROM users WHERE email = ?').get(a.email);
+    if (!exists) {
+      const hash = bcrypt.hashSync(a.password, 10);
+      db.prepare('INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)').run(a.email, hash, a.role);
+      console.log(`[db] Seeded known admin: ${a.email}`);
+    }
+  }
+}
 
 module.exports = db;

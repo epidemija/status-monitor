@@ -5,12 +5,18 @@
     <a href="/admin/sites" class="<%= currentPath.startsWith('/sites') ? 'nav-active' : '' %>">Sites</a>
     <a href="/admin/incidents" class="<%= currentPath.startsWith('/incidents') ? 'nav-active' : '' %>">Incidents</a>
     <a href="/admin/status-codes" class="<%= currentPath.startsWith('/status-codes') ? 'nav-active' : '' %>">Status codes</a>
+    <a href="/admin/check-log" class="<%= currentPath.startsWith('/check-log') ? 'nav-active' : '' %>">Check log</a>
+    <a href="/admin/geo" class="<%= currentPath.startsWith('/geo') ? 'nav-active' : '' %>">Geo checks</a>
+    <a href="/admin/cms" class="<%= currentPath.startsWith('/cms') ? 'nav-active' : '' %>">Tech scan</a>
     <a href="/admin/reports" class="<%= currentPath.startsWith('/reports') ? 'nav-active' : '' %>">Reports</a>
     <a href="/admin/settings" class="<%= currentPath.startsWith('/settings') ? 'nav-active' : '' %>">Settings</a>
     <a href="/admin/smtp-check" class="<%= currentPath.startsWith('/smtp-check') ? 'nav-active' : '' %>">SMTP Check</a>
     <a href="/admin/notification-log" class="<%= currentPath.startsWith('/notification-log') ? 'nav-active' : '' %>">Notif. log</a>
+    <a href="/admin/logs" class="<%= currentPath.startsWith('/logs') ? 'nav-active' : '' %>">App logs</a>
     <% if (userRole === 'admin') { %>
       <div class="sidebar-divider"></div>
+      <a href="/admin/visitors" class="<%= currentPath.startsWith('/visitors') ? 'nav-active' : '' %>">Visitors</a>
+      <a href="/admin/login-log" class="<%= currentPath.startsWith('/login-log') ? 'nav-active' : '' %>">Login log</a>
       <a href="/admin/users" class="<%= currentPath.startsWith('/users') ? 'nav-active' : '' %>">Users</a>
       <a href="/admin/pending" class="<%= currentPath.startsWith('/pending') ? 'nav-active' : '' %>">
         Pending<% if (pendingCount > 0) { %><span class="sidebar-badge"><%= pendingCount %></span><% } %>

@@ -1,0 +1,102 @@
+<%- include('../partials/head', { title: 'Admin · App Logs' }) %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <h1>App logs</h1>
+  <% if (flash) { %><div class="alert alert-info"><%= decodeURIComponent(flash) %></div><% } %>
+
+  <div class="card" style="margin-bottom:16px">
+    <form method="get" action="/admin/logs" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+      <div>
+        <label class="form-label" for="log-filter">Level filter</label>
+        <select id="log-filter" name="filter" class="form-control" style="width:140px">
+          <option value="" <%- filter===''?'selected':'' %>>All</option>
+          <option value="ERROR" <%- filter==='ERROR'?'selected':'' %>>ERROR</option>
+          <option value="WARN"  <%- filter==='WARN'?'selected':'' %>>WARN</option>
+          <option value="HTTP"  <%- filter==='HTTP'?'selected':'' %>>HTTP</option>
+          <option value="INFO"  <%- filter==='INFO'?'selected':'' %>>INFO</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label" for="log-lines">Show last</label>
+        <select id="log-lines" name="lines" class="form-control" style="width:110px">
+          <option value="100"  <%- limit===100?'selected':'' %>>100 lines</option>
+          <option value="250"  <%- limit===250?'selected':'' %>>250 lines</option>
+          <option value="500"  <%- limit===500?'selected':'' %>>500 lines</option>
+          <option value="1000" <%- limit===1000?'selected':'' %>>1000 lines</option>
+          <option value="2000" <%- limit===2000?'selected':'' %>>2000 lines</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-secondary">Apply</button>
+      <button type="button" class="btn btn-secondary" onclick="location.reload()">Refresh</button>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;margin-left:4px">
+        <input type="checkbox" id="auto-refresh" style="cursor:pointer"> Auto-refresh (5s)
+      </label>
+      <form method="post" action="/admin/logs/clear" style="margin:0;margin-left:auto"
+            onsubmit="return confirm('Clear the log file?')">
+        <button type="submit" class="btn btn-danger btn-sm">Clear log</button>
+      </form>
+    </form>
+  </div>
+
+  <div class="card" style="padding:0">
+    <% if (lines.length === 0) { %>
+      <p class="muted" style="padding:16px">No log entries yet.</p>
+    <% } else { %>
+      <div style="overflow-x:auto">
+        <table class="table log-table">
+          <thead>
+            <tr>
+              <th style="width:200px;white-space:nowrap">Timestamp</th>
+              <th style="width:60px">Level</th>
+              <th>Message</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% lines.forEach(line => {
+              const m = line.match(/^(\S+)\s+\[(\w+)\]\s+([\s\S]*)$/);
+              const ts  = m ? m[1] : '';
+              const lvl = m ? m[2] : '';
+              const msg = m ? m[3] : line;
+              const rowClass = lvl === 'ERROR' ? 'log-error' : lvl === 'WARN' ? 'log-warn' : lvl === 'HTTP' ? 'log-http' : '';
+            %>
+            <tr class="<%= rowClass %>">
+              <td class="log-ts"><%= ts %></td>
+              <td><span class="log-badge log-badge-<%= lvl.toLowerCase() %>"><%= lvl %></span></td>
+              <td class="log-msg"><%= msg %></td>
+            </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted small" style="padding:8px 16px">Showing <%= lines.length %> lines (newest first). File: data/app.log</p>
+    <% } %>
+  </div>
+</main>
+
+<style>
+.log-table { font-family: monospace; font-size: 12px; border-collapse: collapse; width: 100%; }
+.log-table th, .log-table td { padding: 4px 10px; border-bottom: 1px solid var(--border, #e5e7eb); vertical-align: top; }
+.log-ts { color: var(--muted, #6b7280); white-space: nowrap; font-size: 11px; }
+.log-msg { word-break: break-all; white-space: pre-wrap; max-width: 0; width: 100%; }
+.log-error { background: rgba(220,38,38,0.06); }
+.log-warn  { background: rgba(245,158,11,0.07); }
+.log-http  { background: rgba(59,130,246,0.04); }
+.log-badge { display:inline-block; padding:1px 6px; border-radius:3px; font-size:10px; font-weight:700; letter-spacing:.5px; }
+.log-badge-info  { background:#dbeafe; color:#1e40af; }
+.log-badge-error { background:#fee2e2; color:#b91c1c; }
+.log-badge-warn  { background:#fef3c7; color:#92400e; }
+.log-badge-http  { background:#ede9fe; color:#5b21b6; }
+</style>
+
+<script>
+let _autoTimer = null;
+document.getElementById('auto-refresh').addEventListener('change', function() {
+  if (this.checked) {
+    _autoTimer = setInterval(() => location.reload(), 5000);
+  } else {
+    clearInterval(_autoTimer);
+  }
+});
+</script>
+</body>
+</html>
