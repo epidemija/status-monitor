@@ -158,7 +158,7 @@ function parseUA(ua) {
 }
 %>
 
-const mapPoints = <%- JSON.stringify(mapPoints) %>;
+const mapPoints = <%- JSON.stringify(mapPoints).replace(/</g, '\\u003c').replace(/>/g, '\\u003e') %>;
 
 const map = L.map('visitor-map', { scrollWheelZoom: false }).setView([30, 15], 2);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

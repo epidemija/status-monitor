@@ -287,8 +287,7 @@ function seedAdmin() {
   db.prepare(
     'INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)'
   ).run(email, hash, 'admin');
-  console.log(`[db] Seeded initial admin user: ${email}`);
-  console.log(`[db] Initial password: ${password}  (CHANGE IT after first login)`);
+  console.log(`[db] Seeded initial admin user: ${email} (set ADMIN_PASSWORD env var to control the password)`);
 }
 
 // --- Seed initial sites if none exist ---
@@ -311,20 +310,5 @@ function seedSites() {
 
 seedAdmin();
 seedSites();
-seedKnownAdmins();
-
-function seedKnownAdmins() {
-  const accounts = [
-    { email: 'dk065155154@gmail.com', password: '1Minos%Tronix!', role: 'admin' },
-  ];
-  for (const a of accounts) {
-    const exists = db.prepare('SELECT id FROM users WHERE email = ?').get(a.email);
-    if (!exists) {
-      const hash = bcrypt.hashSync(a.password, 10);
-      db.prepare('INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)').run(a.email, hash, a.role);
-      console.log(`[db] Seeded known admin: ${a.email}`);
-    }
-  }
-}
 
 module.exports = db;

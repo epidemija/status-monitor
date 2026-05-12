@@ -6,18 +6,55 @@ const notifier = require('../lib/notifier');
 
 const router = express.Router();
 
+// Simple in-memory brute-force guard for the login endpoint.
+// Tracks failed attempts per IP; resets window after 15 minutes.
+const _loginAttempts = new Map();
+const RATE_WINDOW_MS = 15 * 60 * 1000;
+const RATE_MAX_ATTEMPTS = 10;
+
+function loginRateLimited(ip) {
+  const now = Date.now();
+  const rec = _loginAttempts.get(ip);
+  if (!rec || now - rec.firstAt > RATE_WINDOW_MS) {
+    _loginAttempts.set(ip, { count: 1, firstAt: now });
+    return false;
+  }
+  rec.count++;
+  return rec.count > RATE_MAX_ATTEMPTS;
+}
+
+function loginClearAttempts(ip) {
+  _loginAttempts.delete(ip);
+}
+
+// Sweep stale entries every 30 minutes so the map doesn't grow unboundedly.
+setInterval(() => {
+  const cutoff = Date.now() - RATE_WINDOW_MS;
+  for (const [ip, rec] of _loginAttempts) {
+    if (rec.firstAt < cutoff) _loginAttempts.delete(ip);
+  }
+}, 30 * 60 * 1000).unref();
+
 router.get('/login', (req, res) => {
   if (req.session && req.session.userId) return res.redirect('/admin');
   res.render('login', { error: null, flash: req.query.flash || null });
 });
 
 router.post('/login', (req, res) => {
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+  if (loginRateLimited(ip)) {
+    return res.status(429).render('login', {
+      error: 'Too many login attempts. Please wait 15 minutes before trying again.',
+      flash: null,
+    });
+  }
   const email = (req.body.email || '').trim().toLowerCase();
   const password = req.body.password || '';
   const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     return res.status(401).render('login', { error: 'Invalid email or password', flash: null });
   }
+  loginClearAttempts(ip);
   req.session.userId = user.id;
   req.session.userEmail = user.email;
   req.session.userRole = user.role;

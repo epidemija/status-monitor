@@ -1,6 +1,11 @@
 // Status Monitor - main entry point
 require('dotenv').config();
 
+if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+  console.error('[security] SESSION_SECRET environment variable must be set in production. Refusing to start.');
+  process.exit(1);
+}
+
 // Logger must be required before any other module so console patches apply everywhere.
 const { requestLogger } = require('./lib/logger');
 
@@ -30,6 +35,16 @@ const app = express();
 app.set('trust proxy', 1);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+
+// Security headers (no external package required)
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  next();
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: false }));
